@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+email-validator
+asyncpg
+aiosqlite
+matplotlib
+seaborn
+scikit-learn
+pandas
+scipy
+statsmodels
