@@ -11,7 +11,9 @@ from app.models.user import User
 router = APIRouter()
 
 # Define the path where datasets are stored
-UPLOAD_FOLDER = r"D:\Dataset_analyser\datasets"
+UPLOAD_FOLDER = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "datasets")
+)
 
 class VisualizationRequest(BaseModel):
     filename: str

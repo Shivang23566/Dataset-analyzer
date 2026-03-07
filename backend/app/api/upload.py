@@ -3,7 +3,9 @@ import os
 
 router = APIRouter()
 
-UPLOAD_FOLDER = r"D:\Dataset_analyser\datasets"
+UPLOAD_FOLDER = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "datasets")
+)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
