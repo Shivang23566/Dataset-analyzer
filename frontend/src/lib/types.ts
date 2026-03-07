@@ -28,7 +28,7 @@ export type EdaResponse = {
 
 export type ColumnMeta = {
   name: string;
-  type: 'numeric' | 'categorical';
+  type: 'numeric' | 'categorical' | 'datetime';
   dtype: string;
 };
 
@@ -36,6 +36,7 @@ export type ColumnResponse = {
   columns: ColumnMeta[];
   numeric_columns: string[];
   categorical_columns: string[];
+  datetime_columns?: string[];
 };
 
 export type VisualizationResponse = {

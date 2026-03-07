@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import traceback
 from typing import Optional
-from app.services.visualization_engine import generate_visualization
+from app.services.chart_engine import get_chart_engine
 from app.api import deps
 from app.models.user import User
 
@@ -30,8 +30,8 @@ async def get_columns(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """
-    Get column metadata including names and data types (numeric vs categorical).
-    Used for smart column filtering in visualization dropdowns.
+    Get column metadata using comprehensive profiling system.
+    Returns inferred types, statistics, and sample values for smart column filtering.
     """
     file_path = os.path.join(UPLOAD_FOLDER, request.filename)
     
@@ -47,24 +47,22 @@ async def get_columns(
         else:
             raise HTTPException(status_code=400, detail="Unsupported file format")
         
-        # Classify columns by type
-        numeric_columns = df.select_dtypes(include=['int64', 'float64', 'int32', 'float32']).columns.tolist()
-        categorical_columns = df.select_dtypes(include=['object', 'category', 'bool']).columns.tolist()
+        # Use new profiling system
+        engine = get_chart_engine()
+        columns = engine.get_column_profiles(df)
         
-        # Build column metadata
-        columns = []
-        for col in df.columns:
-            col_type = 'numeric' if col in numeric_columns else 'categorical'
-            columns.append({
-                'name': col,
-                'type': col_type,
-                'dtype': str(df[col].dtype)
-            })
+        # Group by inferred type for convenience
+        numeric_columns = [c['column_name'] for c in columns if c['inferred_type'] == 'numeric']
+        categorical_columns = [c['column_name'] for c in columns if c['inferred_type'] == 'categorical']
+        datetime_columns = [c['column_name'] for c in columns if c['inferred_type'] == 'datetime']
+        high_cardinality = [c['column_name'] for c in columns if c['inferred_type'] == 'high_cardinality']
         
         return {
             'columns': columns,
             'numeric_columns': numeric_columns,
-            'categorical_columns': categorical_columns
+            'categorical_columns': categorical_columns,
+            'datetime_columns': datetime_columns,
+            'high_cardinality_columns': high_cardinality
         }
         
     except Exception as e:
@@ -78,7 +76,8 @@ async def create_visualization(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """
-    Generate a visualization for a specific dataset file.
+    Generate a visualization using the new ChartEngine system.
+    Includes automatic validation, profiling, and performance optimization.
     """
     print(f"Visualization request: {request.dict()}")
     file_path = os.path.join(UPLOAD_FOLDER, request.filename)
@@ -99,24 +98,31 @@ async def create_visualization(
         
         print(f"Dataset loaded. Shape: {df.shape}, Columns: {list(df.columns)}")
         
-        # Generates visualization data
-        print(f"Calling generate_visualization with: chart_type={request.chart_type}, x={request.x_column}, y={request.y_column}")
-        result = generate_visualization(
-            df, 
-            request.chart_type, 
-            request.x_column, 
-            request.y_column
+        # Use new ChartEngine system
+        engine = get_chart_engine()
+        result = engine.generate_chart(
+            df=df,
+            chart_type=request.chart_type,
+            x_column=request.x_column,
+            y_column=request.y_column
         )
         
-        print(f"Visualization result: success={result.get('success')}, chart_type={result.get('chart_type')}")
+        print(f"Visualization result: success={result.get('success')}")
         
         if not result.get("success", False):
             error_msg = result.get("error", "Unknown error")
-            print(f"ERROR: Visualization failed: {error_msg}")
+            error_code = result.get("error_code", "UNKNOWN_ERROR")
+            print(f"ERROR: Visualization failed: {error_msg} (code: {error_code})")
             raise HTTPException(status_code=400, detail=error_msg)
         
-        print(f"Returning successful result")
-        return result
+        print(f"Returning successful result with metadata: {result.get('metadata')}")
+        
+        # Return response in expected format
+        return {
+            "success": True,
+            "image": result["image"],
+            "metadata": result.get("metadata", {})
+        }
         
     except HTTPException:
         raise

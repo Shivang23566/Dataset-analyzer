@@ -13,6 +13,7 @@ import {
   RefreshCw,
   ChevronDown,
   AlertCircle,
+  Grid3x3,
 } from 'lucide-react';
 import { generateVisualization, getColumns } from '../lib/api';
 import type { ColumnMeta } from '../lib/types';
@@ -37,6 +38,7 @@ const CHART_DEFS: ChartDef[] = [
   { id: 'histogram', label: 'Histogram', icon: <AlignLeft size={14} />,  xNumericOnly: true,  showY: false },
   { id: 'pie',       label: 'Pie',       icon: <PieChart size={14} />,   xNumericOnly: false, showY: false },
   { id: 'boxplot',   label: 'Box Plot',  icon: <Layers size={14} />,     xNumericOnly: false, showY: true  },
+  { id: 'heatmap',   label: 'Heatmap',   icon: <Grid3x3 size={14} />,    xNumericOnly: false, showY: false },
 ];
 
 type HistoryEntry = { img: string; type: string; title: string };
@@ -102,17 +104,27 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
   }, [chartTitle]);
 
   // ── Smart column filtering per chart type ─────────────────
-  const xOptions = useMemo(
-    () =>
-      chartDef.xNumericOnly
-        ? columns.filter((c) => c.type === 'numeric')
-        : columns,
-    [chartDef, columns],
-  );
-  const yOptions = useMemo(
-    () => columns.filter((c) => c.type === 'numeric'),
-    [columns],
-  );
+  const xOptions = useMemo(() => {
+    if (chartType === 'heatmap') {
+      // Heatmap doesn't need specific columns
+      return columns.filter((c) => c.type === 'numeric').slice(0, 1);
+    }
+    if (chartType === 'boxplot' && yColumn) {
+      // For boxplot with Y axis: X should be categorical, Y should be numeric
+      return columns.filter((c) => c.type === 'categorical' || c.type === 'datetime');
+    }
+    return chartDef.xNumericOnly
+      ? columns.filter((c) => c.type === 'numeric')
+      : columns;
+  }, [chartDef, columns, chartType, yColumn]);
+
+  const yOptions = useMemo(() => {
+    if (chartType === 'boxplot') {
+      // For boxplot: Y must be numeric
+      return columns.filter((c) => c.type === 'numeric');
+    }
+    return columns.filter((c) => c.type === 'numeric');
+  }, [columns, chartType]);
 
   // Reset x when it's no longer valid for the new chart type
   useEffect(() => {
@@ -136,14 +148,14 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
   // ── Generate chart ────────────────────────────────────────
   const onGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!xColumn) return;
+    if (chartType !== 'heatmap' && !xColumn) return;
     setLoadingChart(true);
     setError('');
     try {
       const res = await generateVisualization({
         filename,
         chart_type: chartType,
-        x_column: xColumn,
+        x_column: xColumn || (columns[0]?.name ?? ''),
         y_column: chartDef.showY && yColumn ? yColumn : undefined,
       });
       if (!res.success || !res.image) throw new Error(res.error ?? 'Generation failed');
@@ -280,6 +292,10 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
           <div className="viz-toolbar-right">
             {loadingCols ? (
               <span className="viz-loading-cols">Loading columns…</span>
+            ) : chartType === 'heatmap' ? (
+              <span className="viz-loading-cols" style={{ color: 'var(--color-text-muted)' }}>
+                Heatmap uses all numeric columns
+              </span>
             ) : (
               <>
                 <AxisToken
@@ -309,7 +325,7 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
             <button
               type="submit"
               className="btn btn-primary viz-gen-btn"
-              disabled={loadingChart || !xColumn || loadingCols}
+              disabled={loadingChart || (chartType !== 'heatmap' && !xColumn) || loadingCols}
             >
               {loadingChart ? (
                 <><RefreshCw size={13} className="viz-spin" /> Generating…</>

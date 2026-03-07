@@ -7,7 +7,6 @@ export default function Navbar() {
       <nav className="nav-links">
         <a href="#features">Features</a>
         <a href="#workflow">Workflow</a>
-        <a href="#trust">Trust</a>
       </nav>
       <div className="nav-actions">
         <Link to="/login" className="btn btn-ghost">

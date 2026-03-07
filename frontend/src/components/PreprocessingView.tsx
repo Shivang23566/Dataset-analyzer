@@ -428,7 +428,7 @@ export default function PreprocessingView({ filename }: { filename: string }) {
   };
 
   const heatBarGlow = (pct: number) => {
-    if (pct > 80) return '0 0 8px rgba(244,63,94,0.4)';
+    if (pct > 80) return '0 0 8px rgba(244,63,94,0.5)';
     return 'none';
   };
 

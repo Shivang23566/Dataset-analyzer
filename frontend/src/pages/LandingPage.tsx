@@ -36,7 +36,7 @@ export default function LandingPage() {
       <section className="hero">
         <BallpitBackground
           count={150}
-          colors={['#111827', '#00B4D8', '#F97316']}
+          colors={['#6366F1', '#0EA5E9', '#8B5CF6']}
           gravity={0.35}
           friction={0.998}
           followCursor
@@ -113,24 +113,6 @@ export default function LandingPage() {
             <p>Switch from summary statistics to chart generation directly from the side panel.</p>
           </div>
         </div>
-      </section>
-
-      <section id="trust" className="section-block trust-block">
-        <h2>What You Ship With This Stack</h2>
-        <ul>
-          <li>
-            <CheckCircle2 size={18} />
-            FastAPI-backed API contracts for signup/login/upload/EDA/visualization
-          </li>
-          <li>
-            <CheckCircle2 size={18} />
-            Scalable frontend architecture in React + TypeScript
-          </li>
-          <li>
-            <CheckCircle2 size={18} />
-            High-fidelity charts generated server-side for reliability and consistency
-          </li>
-        </ul>
       </section>
     </div>
   );

@@ -188,8 +188,8 @@ export interface BallpitProps {
 
 export default function BallpitBackground({
   count = 200,
-  colors = ['#ffffff', '#888888', '#444444'],
-  ambientColor = '#ffffff',
+  colors = ['#6366F1', '#0EA5E9', '#8B5CF6'],
+  ambientColor = '#080B14',
   ambientIntensity = 1,
   lightIntensity = 200,
   minSize = 0.5,

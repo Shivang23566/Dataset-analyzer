@@ -203,9 +203,9 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
                 animate={{
                   y: [0, -6, 0],
                   boxShadow: [
-                    '0 8px 32px rgba(26,24,22,0.06)',
-                    '0 16px 48px rgba(26,24,22,0.10)',
-                    '0 8px 32px rgba(26,24,22,0.06)',
+                    '0 8px 32px rgba(0,0,0,0.2)',
+                    '0 16px 48px rgba(0,0,0,0.3)',
+                    '0 8px 32px rgba(0,0,0,0.2)',
                   ],
                 }}
                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
