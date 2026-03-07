@@ -5,10 +5,12 @@ import Sidebar from '../components/Sidebar';
 import UploaderPanel from '../components/UploaderPanel';
 import EDAView from '../components/EDAView';
 import VisualizationView from '../components/VisualizationView';
+import PreprocessingView from '../components/PreprocessingView';
+import MLBuilderView from '../components/MLBuilderView';
 import { getLoggedInEmail } from '../lib/authStore';
 import { logout } from '../lib/api';
 
-type Tab = 'upload' | 'eda' | 'visualization';
+type Tab = 'upload' | 'eda' | 'visualization' | 'preprocess' | 'ml';
 
 export default function WorkspacePage() {
   const navigate = useNavigate();
@@ -47,6 +49,8 @@ export default function WorkspacePage() {
 
         {activeTab === 'eda' && fileName ? <EDAView filename={fileName} /> : null}
         {activeTab === 'visualization' && fileName ? <VisualizationView filename={fileName} /> : null}
+        {activeTab === 'preprocess' && fileName ? <PreprocessingView filename={fileName} /> : null}
+        {activeTab === 'ml' && fileName ? <MLBuilderView filename={fileName} /> : null}
       </section>
     </main>
   );

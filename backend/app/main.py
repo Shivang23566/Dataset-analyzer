@@ -4,6 +4,8 @@ from app.api.auth import router as auth_router
 from app.api.upload import router as upload_router
 from app.api.EDA import router as eda_router
 from app.api.visualization import router as visualization_router
+from app.api.preprocess import router as preprocess_router
+from app.api.ml import router as ml_router
 from app.core.database import engine, Base
 import os
     
@@ -30,6 +32,8 @@ app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(upload_router, prefix="/api", tags=["upload"])
 app.include_router(eda_router, prefix="/api/eda", tags=["eda"])
 app.include_router(visualization_router, prefix="/api/visualization", tags=["visualization"])
+app.include_router(preprocess_router, prefix="/api/preprocess", tags=["preprocess"])
+app.include_router(ml_router, prefix="/api/ml", tags=["ml"])
 
 @app.get("/health")
 async def health_check():

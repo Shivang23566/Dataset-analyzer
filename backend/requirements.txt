@@ -15,3 +15,13 @@ scikit-learn
 pandas
 scipy
 statsmodels
+imbalanced-learn
+xgboost
+lightgbm
+shap
+openpyxl
+pyarrow
+fpdf2
+joblib
+python-dateutil
+numpy

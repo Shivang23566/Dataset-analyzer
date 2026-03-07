@@ -1,10 +1,18 @@
 import { clearAuth, getToken, saveAuth } from './authStore';
 import type {
   ColumnResponse,
+  DatasetHealthResponse,
   EdaResponse,
   LoginPayload,
+  MLColumnMeta,
+  ModelCard,
+  ModelRecommendation,
+  PipelineRunResponse,
+  PreprocessColumnsResponse,
   SignupPayload,
+  TaskDetectResponse,
   TokenResponse,
+  TrainingResult,
   UploadedFileResponse,
   VisualizationResponse,
 } from './types';
@@ -116,4 +124,133 @@ export async function generateVisualization(params: {
 
 export function logout() {
   clearAuth();
+}
+
+// ── Preprocessing API ──────────────────────────────────────────
+
+export async function getDatasetHealth(filename: string) {
+  return request<DatasetHealthResponse>('/api/preprocess/health', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename }),
+  }, true);
+}
+
+export async function getPreprocessColumns(filename: string) {
+  return request<PreprocessColumnsResponse>('/api/preprocess/columns', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename }),
+  }, true);
+}
+
+export async function getImputationRecommendations(filename: string) {
+  return request<{ recommendations: Record<string, string> }>('/api/preprocess/recommend-imputation', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename }),
+  }, true);
+}
+
+export async function detectOutliersApi(filename: string, method = 'iqr', threshold = 3.0) {
+  return request<{ outliers: Record<string, { count: number; pct: number }> }>('/api/preprocess/detect-outliers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename, method, threshold }),
+  }, true);
+}
+
+export async function runPipeline(filename: string, config: Record<string, unknown>) {
+  return request<PipelineRunResponse>('/api/preprocess/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename, config }),
+  }, true);
+}
+
+export function getDownloadUrl(sessionKey: string, format: string): string {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+  return `${API_BASE_URL}/api/preprocess/download/${sessionKey}?format=${format}`;
+}
+
+export function getDownloadHeaders(): Record<string, string> {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// ── ML API ────────────────────────────────────────────────────
+
+export async function getMLColumns(filename: string) {
+  return request<{ columns: MLColumnMeta[] }>('/api/ml/columns', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename }),
+  }, true);
+}
+
+export async function detectMLTask(filename: string, target_col: string) {
+  return request<TaskDetectResponse>('/api/ml/detect-task', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename, target_col }),
+  }, true);
+}
+
+export async function getMLRecommendation(filename: string, target_col?: string) {
+  return request<ModelRecommendation>('/api/ml/recommend', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename, target_col }),
+  }, true);
+}
+
+export async function getModelCards(task: string) {
+  return request<{ cards: ModelCard[] }>('/api/ml/cards', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task }),
+  }, true);
+}
+
+export async function trainModel(params: {
+  filename: string;
+  model_id: string;
+  target_col?: string;
+  task: string;
+  hyperparams?: Record<string, unknown>;
+  auto_tune?: boolean;
+  cv_folds?: number;
+  test_size?: number;
+  random_state?: number;
+}) {
+  return request<TrainingResult>('/api/ml/train', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  }, true);
+}
+
+export function getModelDownloadUrl(sessionKey: string): string {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+  return `${API_BASE_URL}/api/ml/download/${sessionKey}`;
+}
+
+export async function getInferenceCode(sessionKey: string): Promise<string> {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+  const token = getToken();
+  const resp = await fetch(`${API_BASE_URL}/api/ml/inference-code/${sessionKey}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!resp.ok) throw new Error('Failed to fetch inference code');
+  return resp.text();
+}
+
+export async function getModelCard(sessionKey: string): Promise<string> {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+  const token = getToken();
+  const resp = await fetch(`${API_BASE_URL}/api/ml/model-card/${sessionKey}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!resp.ok) throw new Error('Failed to fetch model card');
+  return resp.text();
 }
