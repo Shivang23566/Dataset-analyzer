@@ -734,14 +734,122 @@ def step_train_test_split(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str,
 
 
 # ─────────────────────────────────────────────────────────────
+# CONFIG TRANSLATION  (frontend keys → internal step keys)
+# ─────────────────────────────────────────────────────────────
+
+def _translate_frontend_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Translate the frontend-style config dict (keys like 'duplicate_removal',
+    'missing_values', etc.) into the internal step-based keys that
+    run_pipeline() uses (step1_enabled, step2_config, …).
+
+    If the config already uses internal keys (step1_enabled …) it is returned
+    unchanged so legacy callers continue to work.
+    """
+    # Already in internal format — nothing to translate
+    if any(k.startswith("step") and k.endswith("_enabled") for k in cfg):
+        return cfg
+
+    internal: Dict[str, Any] = {}
+
+    # ── Step 1: Duplicate Removal ──────────────────────────
+    dup = cfg.get("duplicate_removal")
+    if dup is not None:
+        internal["step1_enabled"] = True
+        internal["step1_keep"] = dup.get("keep", "first")
+
+    # ── Step 2: Missing Values ─────────────────────────────
+    missing = cfg.get("missing_values")
+    if missing is not None:
+        internal["step2_enabled"] = True
+        # frontend wraps strategies under a "strategies" key
+        strats = missing.get("strategies", missing)
+        internal["step2_config"] = strats if isinstance(strats, dict) else {}
+
+    # ── Step 3: Outlier Treatment ──────────────────────────
+    outlier = cfg.get("outlier_treatment")
+    if outlier is not None:
+        internal["step3_enabled"] = True
+        internal["step3_config"] = {
+            "method":    outlier.get("method",    "iqr"),
+            "threshold": outlier.get("threshold", 3.0),
+            "treatment": outlier.get("treatment", "cap"),
+        }
+
+    # ── Step 4: Type Correction ────────────────────────────
+    type_corr = cfg.get("type_correction")
+    if type_corr is not None:
+        internal["step4_enabled"] = True
+        internal["step4_overrides"] = type_corr.get("overrides", {})
+
+    # ── Step 5: Feature Engineering ───────────────────────
+    feat = cfg.get("feature_engineering")
+    if feat is not None:
+        internal["step5_enabled"] = True
+        internal["step5_config"] = {
+            "log_transform":  feat.get("log_transform",  []),
+            "sqrt_transform": feat.get("sqrt_transform", []),
+            "encoding":       feat.get("encoding",       {}),
+            "binning":        feat.get("binning",        []),
+            "interactions":   feat.get("interactions",   []),
+            "polynomial":     feat.get("polynomial",     {}),
+        }
+
+    # ── Step 6: Scaling ────────────────────────────────────
+    scaling = cfg.get("scaling")
+    if scaling is not None:
+        internal["step6_enabled"] = True
+        internal["step6_config"] = {"method": scaling.get("method", "standard")}
+
+    # ── Step 7: Class Imbalance ────────────────────────────
+    imbalance = cfg.get("class_imbalance")
+    if imbalance is not None:
+        internal["step7_enabled"] = True
+        internal["step7_config"] = {
+            "target_col": imbalance.get("target_col"),
+            "method":     imbalance.get("method", "smote"),
+        }
+
+    # ── Step 8: Dimensionality Reduction ──────────────────
+    dim = cfg.get("dimensionality_reduction")
+    if dim is not None:
+        internal["step8_enabled"] = True
+        internal["step8_config"] = {
+            "method":               dim.get("method",          "remove_correlated"),
+            "correlation_threshold": dim.get("corr_threshold",  0.95),
+            "n_components":         dim.get("pca_components",  10),
+            "variance_threshold":   dim.get("variance_threshold", 0.01),
+            "k":                    dim.get("k",               10),
+            "target_col":           dim.get("target_col",      None),
+        }
+
+    # ── Step 9: Train / Test Split ─────────────────────────
+    split = cfg.get("train_test_split")
+    if split is not None:
+        internal["step9_enabled"] = True
+        internal["step9_config"] = {
+            "test_size":    split.get("test_size",    0.2),
+            "stratify_col": split.get("stratify_col", None) or None,
+            "random_state": split.get("random_state", 42),
+        }
+
+    return internal
+
+
+# ─────────────────────────────────────────────────────────────
 # FULL PIPELINE RUNNER
 # ─────────────────────────────────────────────────────────────
 
 def run_pipeline(df: pd.DataFrame, pipeline_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Run the full preprocessing pipeline based on a config dict.
-    Returns { steps: {step_name: result}, before_stats, after_stats, dataframe_json }
+    Accepts both frontend-style keys (duplicate_removal, missing_values, …)
+    and the legacy internal keys (step1_enabled, step2_config, …).
+    Returns { steps: {step_name: result}, before_stats, after_stats, preview, columns, success }
     """
+    # ── Translate frontend keys to internal format if needed ──
+    pipeline_config = _translate_frontend_config(pipeline_config)
+
     stats_before = _df_stats(df)
     step_results = {}
 

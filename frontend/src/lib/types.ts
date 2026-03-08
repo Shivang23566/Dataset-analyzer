@@ -109,6 +109,7 @@ export type PipelineRunResponse = {
   preview: Record<string, unknown>[];
   columns: Array<{ name: string; dtype: string }>;
   session_key: string;
+  processed_filename?: string;
 };
 
 // ── ML Types ─────────────────────────────────────────────────

@@ -217,7 +217,7 @@ function StepCard({
 }
 
 // ── Main Component ────────────────────────────────────────────
-export default function PreprocessingView({ filename }: { filename: string }) {
+export default function PreprocessingView({ filename, onProcessed }: { filename: string; onProcessed?: (filename: string) => void }) {
 
   // ── Phase 1 state ─────────────────────────────────────────
   const [health,        setHealth]        = useState<DatasetHealthResponse | null>(null);
@@ -381,6 +381,10 @@ export default function PreprocessingView({ filename }: { filename: string }) {
       };
       const result = await runPipeline(filename, config);
       setPipelineResult(result);
+      // Notify parent so ML tab automatically uses the processed file
+      if (result.processed_filename) {
+        onProcessed?.(result.processed_filename);
+      }
     } catch (err) {
       setPipelineError(err instanceof Error ? err.message : 'Pipeline run failed');
     } finally {

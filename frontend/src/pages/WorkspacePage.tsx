@@ -16,6 +16,7 @@ export default function WorkspacePage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('upload');
   const [fileName, setFileName] = useState('');
+  const [processedFileName, setProcessedFileName] = useState('');
 
   const onLogout = () => {
     logout();
@@ -42,6 +43,7 @@ export default function WorkspacePage() {
             currentFile={fileName}
             onUploaded={(uploaded) => {
               setFileName(uploaded);
+              setProcessedFileName('');
               setActiveTab('eda');
             }}
           />
@@ -49,8 +51,15 @@ export default function WorkspacePage() {
 
         {activeTab === 'eda' && fileName ? <EDAView filename={fileName} /> : null}
         {activeTab === 'visualization' && fileName ? <VisualizationView filename={fileName} /> : null}
-        {activeTab === 'preprocess' && fileName ? <PreprocessingView filename={fileName} /> : null}
-        {activeTab === 'ml' && fileName ? <MLBuilderView filename={fileName} /> : null}
+        {activeTab === 'preprocess' && fileName ? (
+          <PreprocessingView
+            filename={fileName}
+            onProcessed={(pf) => setProcessedFileName(pf)}
+          />
+        ) : null}
+        {activeTab === 'ml' && fileName ? (
+          <MLBuilderView filename={processedFileName || fileName} />
+        ) : null}
       </section>
     </main>
   );

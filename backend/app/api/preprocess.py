@@ -110,14 +110,24 @@ async def run_preprocessing_pipeline(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Run the full preprocessing pipeline on the uploaded dataset."""
+    import hashlib, time, re
+
     df = _load_df(request.filename)
     try:
         results, processed_df = run_pipeline(df, request.config)
-        # Generate a session key from filename
-        import hashlib, time
+
+        # Generate a unique session key
         session_key = hashlib.md5(f"{request.filename}_{time.time()}".encode()).hexdigest()[:12]
         store_processed_df(session_key, processed_df)
+
+        # ── Save processed CSV to disk so ML feature can pick it up ──
+        base = re.sub(r"\.[^.]+$", "", request.filename)   # strip extension
+        processed_filename = f"preprocessed_{base}.csv"
+        processed_path = os.path.join(UPLOAD_FOLDER, processed_filename)
+        processed_df.to_csv(processed_path, index=False)
+
         results["session_key"] = session_key
+        results["processed_filename"] = processed_filename
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
