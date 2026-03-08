@@ -157,12 +157,29 @@ class ColumnProfiler:
         """Convert numpy/pandas types to JSON-serializable types"""
         if pd.isna(value):
             return None
+        
+        # Handle numpy numeric types
         if isinstance(value, (np.integer, np.floating)):
+            if np.isinf(value):
+                return None
             return float(value) if isinstance(value, np.floating) else int(value)
+        
+        # Handle Python native float (after .tolist() conversion)
+        if isinstance(value, float):
+            if np.isinf(value) or np.isnan(value):
+                return None
+            return value
+        
+        # Handle Python native int
+        if isinstance(value, int):
+            return value
+        
         if isinstance(value, np.bool_):
             return bool(value)
+        
         if isinstance(value, (pd.Timestamp, np.datetime64)):
             return str(value)
+        
         return str(value)
     
     @classmethod

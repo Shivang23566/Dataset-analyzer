@@ -32,11 +32,22 @@ export type ColumnMeta = {
   dtype: string;
 };
 
+export type DatasetColumn = {
+  column_name: string;
+  dtype: string;
+  inferred_type: 'numeric' | 'categorical' | 'datetime' | 'high_cardinality';
+  unique_count: number;
+  null_count: number;
+  sample_values: any[];
+};
+
 export type ColumnResponse = {
-  columns: ColumnMeta[];
+  columns: DatasetColumn[];
   numeric_columns: string[];
   categorical_columns: string[];
   datetime_columns?: string[];
+  high_cardinality_columns?: string[];
+  preview_data?: any[];
 };
 
 export type VisualizationResponse = {

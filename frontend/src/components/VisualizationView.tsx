@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart2,
@@ -8,426 +8,1012 @@ import {
   Layers,
   AlignLeft,
   Download,
-  Copy,
-  Clock,
   RefreshCw,
   ChevronDown,
   AlertCircle,
   Grid3x3,
 } from 'lucide-react';
-import { generateVisualization, getColumns } from '../lib/api';
-import type { ColumnMeta } from '../lib/types';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  ScatterChart,
+  Scatter,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import { getColumns, generateVisualization } from '../lib/api';
+import type { DatasetColumn } from '../lib/types';
 
-type VisualizationViewProps = { filename: string };
+// ═══════════════════════════════════════════════════════════════
+// TYPES & CONSTANTS
+// ═══════════════════════════════════════════════════════════════
 
-// ─── Chart type definitions ───────────────────────────────
-type ChartDef = {
+type VisualizationViewProps = {
+  filename: string;
+};
+
+type ColumnType = 'quantitative' | 'categorical' | 'datetime';
+
+interface ParsedColumn {
+  name: string;
+  type: ColumnType;
+  dtype: string;
+}
+
+interface ChartConfig {
   id: string;
   label: string;
   icon: React.ReactNode;
-  /** X column must be numeric */
-  xNumericOnly: boolean;
-  /** Whether to show a Y axis selector */
-  showY: boolean;
-};
+  xAccepts: ColumnType[];
+  yAccepts: ColumnType[];
+  yLabel: string;
+  hideYAxis?: boolean;
+}
 
-const CHART_DEFS: ChartDef[] = [
-  { id: 'bar',       label: 'Bar',       icon: <BarChart2 size={14} />,  xNumericOnly: false, showY: true  },
-  { id: 'line',      label: 'Line',      icon: <TrendingUp size={14} />, xNumericOnly: true,  showY: true  },
-  { id: 'scatter',   label: 'Scatter',   icon: <Activity size={14} />,   xNumericOnly: true,  showY: true  },
-  { id: 'histogram', label: 'Histogram', icon: <AlignLeft size={14} />,  xNumericOnly: true,  showY: false },
-  { id: 'pie',       label: 'Pie',       icon: <PieChart size={14} />,   xNumericOnly: false, showY: false },
-  { id: 'boxplot',   label: 'Box Plot',  icon: <Layers size={14} />,     xNumericOnly: false, showY: true  },
-  { id: 'heatmap',   label: 'Heatmap',   icon: <Grid3x3 size={14} />,    xNumericOnly: false, showY: false },
+const CHART_CONFIGS: ChartConfig[] = [
+  {
+    id: 'bar',
+    label: 'Bar',
+    icon: <BarChart2 size={14} />,
+    xAccepts: ['categorical'],
+    yAccepts: ['quantitative'],
+    yLabel: 'Select Y Axis',
+  },
+  {
+    id: 'line',
+    label: 'Line',
+    icon: <TrendingUp size={14} />,
+    xAccepts: ['datetime', 'quantitative'],
+    yAccepts: ['quantitative'],
+    yLabel: 'Select Y Axis',
+  },
+  {
+    id: 'scatter',
+    label: 'Scatter',
+    icon: <Activity size={14} />,
+    xAccepts: ['quantitative'],
+    yAccepts: ['quantitative'],
+    yLabel: 'Select Y Axis',
+  },
+  {
+    id: 'histogram',
+    label: 'Histogram',
+    icon: <AlignLeft size={14} />,
+    xAccepts: ['quantitative'],
+    yAccepts: [],
+    yLabel: 'Frequency',
+    hideYAxis: true,
+  },
+  {
+    id: 'pie',
+    label: 'Pie',
+    icon: <PieChart size={14} />,
+    xAccepts: ['categorical'],
+    yAccepts: ['quantitative'],
+    yLabel: 'Select Value',
+  },
+  {
+    id: 'boxplot',
+    label: 'Box Plot',
+    icon: <Layers size={14} />,
+    xAccepts: ['categorical'],
+    yAccepts: ['quantitative'],
+    yLabel: 'Select Y Axis',
+  },
+  {
+    id: 'heatmap',
+    label: 'Heatmap',
+    icon: <Grid3x3 size={14} />,
+    xAccepts: ['categorical'],
+    yAccepts: ['categorical'],
+    yLabel: 'Select Y Axis',
+  },
 ];
 
-type HistoryEntry = { img: string; type: string; title: string };
+const CHART_COLORS = ['#6366F1', '#0EA5E9', '#8B5CF6', '#10B981', '#F59E0B', '#F43F5E'];
+
+type AggregationType = 'sum' | 'avg' | 'count' | 'max' | 'min';
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════
 
 export default function VisualizationView({ filename }: VisualizationViewProps) {
-  const [columns,       setColumns]       = useState<ColumnMeta[]>([]);
-  const [chartType,     setChartType]     = useState('bar');
-  const [xColumn,       setXColumn]       = useState('');
-  const [yColumn,       setYColumn]       = useState('');
-  const [loadingCols,   setLoadingCols]   = useState(false);
-  const [loadingChart,  setLoadingChart]  = useState(false);
-  const [error,         setError]         = useState('');
-  const [imageBase64,   setImageBase64]   = useState('');
-  const [chartHistory,  setChartHistory]  = useState<HistoryEntry[]>([]);
-  const [xOpen,         setXOpen]         = useState(false);
-  const [yOpen,         setYOpen]         = useState(false);
-  const [chartTitle,    setChartTitle]    = useState('Generated Chart');
+  // State
+  const [columns, setColumns] = useState<ParsedColumn[]>([]);
+  const [rawData, setRawData] = useState<any[]>([]);
+  const [chartType, setChartType] = useState('bar');
+  const [xColumn, setXColumn] = useState('');
+  const [yColumn, setYColumn] = useState('');
+  const [aggregation, setAggregation] = useState<AggregationType>('sum');
+  const [loading, setLoading] = useState(false);
+  const [loadingChart, setLoadingChart] = useState(false);
+  const [error, setError] = useState('');
+  const [chartGenerated, setChartGenerated] = useState(false);
+  const [generatedChartImage, setGeneratedChartImage] = useState(''); // Backend-generated chart
+  const [xDropdownOpen, setXDropdownOpen] = useState(false);
+  const [yDropdownOpen, setYDropdownOpen] = useState(false);
 
-  const titleRef  = useRef<HTMLDivElement>(null);
-  const xDropRef  = useRef<HTMLDivElement>(null);
-  const yDropRef  = useRef<HTMLDivElement>(null);
+  const chartConfig = CHART_CONFIGS.find((c) => c.id === chartType) ?? CHART_CONFIGS[0];
 
-  const chartDef = CHART_DEFS.find((c) => c.id === chartType) ?? CHART_DEFS[0];
+  // ═══════════════════════════════════════════════════════════════
+  // DATA LOADING & COLUMN PARSING
+  // ═══════════════════════════════════════════════════════════════
 
-  // ── Load columns ─────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
-    const load = async () => {
-      setLoadingCols(true);
+
+    const loadData = async () => {
+      setLoading(true);
       setError('');
+      setChartGenerated(false);
+
       try {
-        const res = await getColumns(filename);
+        console.log('[VisualizationView] Loading columns for:', filename);
+        const response = await getColumns(filename);
         if (cancelled) return;
-        setColumns(res.columns);
-        setXColumn(res.columns[0]?.name ?? '');
-        setYColumn(res.numeric_columns[0] ?? '');
+
+        console.log('[VisualizationView] Received columns:', response.columns?.length);
+
+        // BUG FIX 1: Parse columns and infer types
+        const parsedColumns: ParsedColumn[] = response.columns.map((col: DatasetColumn) => {
+          let inferredType: ColumnType = 'categorical';
+
+          if (col.inferred_type === 'numeric') {
+            inferredType = 'quantitative';
+          } else if (col.inferred_type === 'datetime') {
+            inferredType = 'datetime';
+          } else if (
+            col.inferred_type === 'categorical' ||
+            col.inferred_type === 'high_cardinality'
+          ) {
+            inferredType = 'categorical';
+          }
+
+          return {
+            name: col.column_name,
+            type: inferredType,
+            dtype: col.dtype,
+          };
+        });
+
+        console.log('[VisualizationView] Parsed columns:', parsedColumns);
+        setColumns(parsedColumns);
+
+        // Store raw preview data if available
+        if (response.preview_data) {
+          setRawData(response.preview_data);
+        }
+
+        // BUG FIX 1: Set default X and Y based on CURRENT chart type
+        const currentConfig = CHART_CONFIGS.find((c) => c.id === chartType) ?? CHART_CONFIGS[0];
+        const firstValidX = parsedColumns.find((c) => currentConfig.xAccepts.includes(c.type));
+        const firstValidY = parsedColumns.find((c) => currentConfig.yAccepts.includes(c.type));
+
+        console.log('[VisualizationView] Auto-selected X:', firstValidX?.name, 'Y:', firstValidY?.name);
+
+        if (firstValidX) {
+          setXColumn(firstValidX.name);
+        } else {
+          console.warn('[VisualizationView] No valid X column found for chart type:', chartType);
+          setXColumn('');
+        }
+
+        if (firstValidY && !currentConfig.hideYAxis) {
+          setYColumn(firstValidY.name);
+        } else if (!currentConfig.hideYAxis) {
+          console.warn('[VisualizationView] No valid Y column found for chart type:', chartType);
+          setYColumn('');
+        }
       } catch (err) {
-        if (!cancelled)
-          setError(err instanceof Error ? err.message : 'Could not load columns');
+        if (!cancelled) {
+          console.error('[VisualizationView] Error loading columns:', err);
+          setError(err instanceof Error ? err.message : 'Failed to load columns');
+        }
       } finally {
-        if (!cancelled) setLoadingCols(false);
+        if (!cancelled) setLoading(false);
       }
     };
-    load();
-    return () => { cancelled = true; };
-  }, [filename]);
 
-  // ── Close dropdowns on outside click ─────────────────────
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (xDropRef.current && !xDropRef.current.contains(e.target as Node)) setXOpen(false);
-      if (yDropRef.current && !yDropRef.current.contains(e.target as Node)) setYOpen(false);
+    loadData();
+
+    return () => {
+      cancelled = true;
     };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
+  }, [filename, chartType]);
 
-  // ── Sync contentEditable title when state changes ─────────
-  useEffect(() => {
-    if (titleRef.current && titleRef.current.textContent !== chartTitle) {
-      titleRef.current.textContent = chartTitle;
-    }
-  }, [chartTitle]);
+  // ═══════════════════════════════════════════════════════════════
+  // FILTERED OPTIONS FOR DROPDOWNS
+  // ═══════════════════════════════════════════════════════════════
 
-  // ── Smart column filtering per chart type ─────────────────
   const xOptions = useMemo(() => {
-    if (chartType === 'heatmap') {
-      // Heatmap doesn't need specific columns
-      return columns.filter((c) => c.type === 'numeric').slice(0, 1);
-    }
-    if (chartType === 'boxplot' && yColumn) {
-      // For boxplot with Y axis: X should be categorical, Y should be numeric
-      return columns.filter((c) => c.type === 'categorical' || c.type === 'datetime');
-    }
-    return chartDef.xNumericOnly
-      ? columns.filter((c) => c.type === 'numeric')
-      : columns;
-  }, [chartDef, columns, chartType, yColumn]);
+    const options = columns.filter((c) => chartConfig.xAccepts.includes(c.type));
+    console.log('[VisualizationView] X Options filtered:', options.length, 'from', columns.length, 'columns for chart type', chartConfig.id);
+    console.log('[VisualizationView] X Options:', options.map(o => `${o.name}(${o.type})`).join(', '));
+    return options;
+  }, [columns, chartConfig]);
 
   const yOptions = useMemo(() => {
-    if (chartType === 'boxplot') {
-      // For boxplot: Y must be numeric
-      return columns.filter((c) => c.type === 'numeric');
-    }
-    return columns.filter((c) => c.type === 'numeric');
-  }, [columns, chartType]);
+    if (chartConfig.hideYAxis) return [];
+    const options = columns.filter((c) => chartConfig.yAccepts.includes(c.type));
+    console.log('[VisualizationView] Y Options filtered:', options.length, 'from', columns.length, 'columns for chart type', chartConfig.id);
+    console.log('[VisualizationView] Y Options:', options.map(o => `${o.name}(${o.type})`).join(', '));
+    return options;
+  }, [columns, chartConfig]);
 
-  // Reset x when it's no longer valid for the new chart type
+  // Auto-select first valid option when chart type changes
   useEffect(() => {
-    if (xOptions.length && !xOptions.find((c) => c.name === xColumn)) {
-      setXColumn(xOptions[0]?.name ?? '');
-    }
-  }, [xOptions]); // eslint-disable-line react-hooks/exhaustive-deps
+    console.log('[VisualizationView] Chart type changed to:', chartType);
+    console.log('[VisualizationView] Current X:', xColumn, 'Y:', yColumn);
+    console.log('[VisualizationView] Available columns:', columns.length);
+    console.log('[VisualizationView] X Options count:', xOptions.length, 'Y Options count:', yOptions.length);
+    console.log('[VisualizationView] xOptions:', xOptions.length, 'yOptions:', yOptions.length);
 
-  // ── Chart type change handler ────────────────────────────
-  const handleChartType = (id: string) => {
-    setChartType(id);
-    setXOpen(false);
-    setYOpen(false);
-    // If new type shows Y and current Y is empty, set default
-    const def = CHART_DEFS.find((c) => c.id === id)!;
-    if (def.showY && !yColumn && yOptions.length > 0) {
-      setYColumn(yOptions[0].name);
+    if (xOptions.length > 0 && !xOptions.find((c) => c.name === xColumn)) {
+      const newX = xOptions[0].name;
+      console.log('[VisualizationView] Auto-selecting new X:', newX);
+      setXColumn(newX);
     }
-  };
+    if (yOptions.length > 0 && !yOptions.find((c) => c.name === yColumn)) {
+      const newY = yOptions[0].name;
+      console.log('[VisualizationView] Auto-selecting new Y:', newY);
+      setYColumn(newY);
+    }
+    // Clear chart when type changes
+    setChartGenerated(false);
+    setGeneratedChartImage('');
+  }, [chartType, xOptions, yOptions]);
 
-  // ── Generate chart ────────────────────────────────────────
-  const onGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (chartType !== 'heatmap' && !xColumn) return;
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.viz-dropdown')) {
+        setXDropdownOpen(false);
+        setYDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════
+  // CHART GENERATION
+  // ═══════════════════════════════════════════════════════════════
+
+  const handleGenerate = async () => {
+    // BUG FIX 1: Frontend validation guard
+    if (!xColumn || xColumn.trim() === '') {
+      setError('Please select an X axis column');
+      console.error('[VisualizationView] Generate blocked: X column is empty');
+      return;
+    }
+
+    if (!chartConfig.hideYAxis && (!yColumn || yColumn.trim() === '')) {
+      setError('Please select a Y axis column');
+      console.error('[VisualizationView] Generate blocked: Y column is empty');
+      return;
+    }
+
+    console.log('[VisualizationView] Generating chart:', {
+      chartType,
+      xColumn,
+      yColumn,
+      filename,
+    });
+
     setLoadingChart(true);
     setError('');
-    try {
-      const res = await generateVisualization({
-        filename,
-        chart_type: chartType,
-        x_column: xColumn || (columns[0]?.name ?? ''),
-        y_column: chartDef.showY && yColumn ? yColumn : undefined,
-      });
-      if (!res.success || !res.image) throw new Error(res.error ?? 'Generation failed');
 
-      const title = `${chartType[0].toUpperCase() + chartType.slice(1)}${
-        chartDef.showY && yColumn ? ` — ${xColumn} × ${yColumn}` : ` — ${xColumn}`
-      }`;
-      setImageBase64(res.image);
-      setChartTitle(title);
-      setChartHistory((prev) => [
-        { img: res.image!, type: chartType, title },
-        ...prev.slice(0, 2),
-      ]);
+    try {
+      // Actually call the backend API to generate visualization
+      const result = await generateVisualization({
+        filename: filename,
+        chart_type: chartType,
+        x_column: xColumn,
+        y_column: yColumn || undefined,
+      });
+
+      if (result.success) {
+        console.log('[VisualizationView] Chart generated successfully');
+        setGeneratedChartImage(result.image || '');
+        setChartGenerated(true);
+      } else {
+        const errorMsg = result.error || 'Failed to generate chart';
+        console.error('[VisualizationView] Generation failed:', errorMsg);
+        setError(errorMsg);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Visualization failed');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to generate chart';
+      console.error('[VisualizationView] Generation error:', err);
+      setError(errorMsg);
     } finally {
       setLoadingChart(false);
     }
   };
 
-  // ── Export handlers ───────────────────────────────────────
-  const exportPNG = useCallback(() => {
-    if (!imageBase64) return;
-    const a = document.createElement('a');
-    a.href  = `data:image/png;base64,${imageBase64}`;
-    a.download = `${chartType}-chart.png`;
-    a.click();
-  }, [imageBase64, chartType]);
+  // ═══════════════════════════════════════════════════════════════
+  // CHART DATA PREPARATION
+  // ═══════════════════════════════════════════════════════════════
 
-  const copyImage = useCallback(async () => {
-    if (!imageBase64) return;
-    try {
-      const blob = await fetch(`data:image/png;base64,${imageBase64}`).then((r) => r.blob());
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    } catch {
-      await navigator.clipboard.writeText(`data:image/png;base64,${imageBase64}`);
+  const prepareChartData = () => {
+    if (!rawData || rawData.length === 0) {
+      // Generate sample data for demonstration
+      return generateSampleData();
     }
-  }, [imageBase64]);
 
-  // ── Axis token dropdown component (DRY helper) ────────────
-  const AxisToken = ({
-    label,
-    value,
-    options,
-    open,
-    onOpen,
-    onSelect,
-    dropRef,
-  }: {
-    label: string;
-    value: string;
-    options: ColumnMeta[];
-    open: boolean;
-    onOpen: () => void;
-    onSelect: (name: string) => void;
-    dropRef: React.RefObject<HTMLDivElement>;
-  }) => (
-    <div className="viz-token-wrap" ref={dropRef}>
-      <span className="viz-token-label">{label}</span>
-      <button
-        type="button"
-        className={`viz-token${open ? ' viz-token--open' : ''}`}
-        onClick={onOpen}
-        disabled={loadingCols || options.length === 0}
-      >
-        <span className="viz-token-name">{value || 'select…'}</span>
-        {value && (
-          <span className="viz-token-dtype">
-            {columns.find((c) => c.name === value)?.dtype ?? ''}
-          </span>
-        )}
-        <ChevronDown size={11} className={`viz-token-chevron${open ? ' open' : ''}`} />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="viz-drop-panel"
-            initial={{ opacity: 0, y: -4, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.97 }}
-            transition={{ duration: 0.14 }}
-          >
-            {options.map((col) => (
-              <button
-                key={col.name}
-                type="button"
-                className={`viz-drop-item${value === col.name ? ' active' : ''}`}
-                onClick={() => { onSelect(col.name); }}
+    // Process real data based on chart type
+    switch (chartType) {
+      case 'bar':
+        return prepareBarData(rawData);
+      case 'line':
+        return prepareLineData(rawData);
+      case 'scatter':
+        return prepareScatterData(rawData);
+      case 'histogram':
+        return rawData; // Will be binned in prepareHistogramData
+      case 'pie':
+        return preparePieData(rawData);
+      default:
+        return rawData.slice(0, 20);
+    }
+  };
+
+  const prepareBarData = (data: any[]) => {
+    // Group by X column and aggregate Y column
+    const grouped: Record<string, number[]> = {};
+    
+    data.forEach((row) => {
+      const xVal = String(row[xColumn]);
+      const yVal = parseFloat(row[yColumn]);
+      
+      if (!isNaN(yVal)) {
+        if (!grouped[xVal]) {
+          grouped[xVal] = [];
+        }
+        grouped[xVal].push(yVal);
+      }
+    });
+
+    // Aggregate and sort by value
+    const result = Object.entries(grouped)
+      .map(([key, values]) => ({
+        [xColumn]: key,
+        [yColumn]: values.reduce((a, b) => a + b, 0) / values.length, // Average
+      }))
+      .sort((a, b) => (b[yColumn] as number) - (a[yColumn] as number))
+      .slice(0, 15); // Top 15
+
+    return result;
+  };
+
+  const prepareLineData = (data: any[]) => {
+    // Sort by X axis
+    const sorted = data
+      .filter((row) => row[xColumn] !== null && row[yColumn] !== null)
+      .map((row) => ({
+        [xColumn]: row[xColumn],
+        [yColumn]: parseFloat(row[yColumn]) || 0,
+      }))
+      .slice(0, 50); // Limit for performance
+
+    return sorted;
+  };
+
+  const prepareScatterData = (data: any[]) => {
+    return data
+      .filter((row) => {
+        const xVal = parseFloat(row[xColumn]);
+        const yVal = parseFloat(row[yColumn]);
+        return !isNaN(xVal) && !isNaN(yVal);
+      })
+      .map((row) => ({
+        [xColumn]: parseFloat(row[xColumn]),
+        [yColumn]: parseFloat(row[yColumn]),
+      }))
+      .slice(0, 100); // Limit to 100 points
+  };
+
+  const preparePieData = (data: any[]) => {
+    // Group by X column and sum Y values
+    const grouped: Record<string, number> = {};
+    
+    data.forEach((row) => {
+      const xVal = String(row[xColumn]);
+      const yVal = parseFloat(row[yColumn]);
+      
+      if (!isNaN(yVal)) {
+        grouped[xVal] = (grouped[xVal] || 0) + yVal;
+      }
+    });
+
+    // Sort and take top 8
+    return Object.entries(grouped)
+      .map(([key, value]) => ({
+        [xColumn]: key,
+        [yColumn]: value,
+      }))
+      .sort((a, b) => (b[yColumn] as number) - (a[yColumn] as number))
+      .slice(0, 8);
+  };
+
+  const generateSampleData = () => {
+    const data: any[] = [];
+    const numPoints = chartType === 'pie' ? 5 : chartType === 'histogram' ? 50 : 12;
+
+    for (let i = 0; i < numPoints; i++) {
+      const xValue =
+        chartType === 'histogram' || chartType === 'scatter'
+          ? Math.random() * 100
+          : chartType === 'pie' || chartType === 'bar' || chartType === 'boxplot' || chartType === 'heatmap'
+          ? `Category ${String.fromCharCode(65 + i)}`
+          : i * 10;
+
+      data.push({
+        [xColumn]: xValue,
+        [yColumn]: Math.random() * 80 + 20,
+      });
+    }
+
+    return data;
+  };
+
+  const chartData = useMemo(() => {
+    if (!chartGenerated) return [];
+    return prepareChartData();
+  }, [chartGenerated, xColumn, yColumn, rawData, chartType]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // DOWNLOAD HANDLER
+  // ═══════════════════════════════════════════════════════════════
+
+  const handleDownload = () => {
+    if (!generatedChartImage) {
+      console.warn('[VisualizationView] No chart image to download');
+      return;
+    }
+
+    try {
+      const link = document.createElement('a');
+      link.href = `data:image/png;base64,${generatedChartImage}`;
+      link.download = `${chartType}-${xColumn}-chart.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      console.log('[VisualizationView] Chart downloaded successfully');
+    } catch (err) {
+      console.error('[VisualizationView] Download failed:', err);
+      setError('Failed to download chart');
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // CHART RENDERING FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════
+
+  const renderChart = () => {
+    if (!chartGenerated) {
+      return (
+        <div className="viz-empty">
+          <BarChart2 size={48} className="viz-empty-icon" />
+          <p className="viz-empty-text">
+            Configure the options above and click <strong>Generate</strong>
+          </p>
+        </div>
+      );
+    }
+
+    // If we have a backend-generated image, show it
+    if (generatedChartImage) {
+      return (
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '20px' }}>
+          <img
+            src={`data:image/png;base64,${generatedChartImage}`}
+            alt="Generated Chart"
+            style={{
+              maxWidth: '100%',
+              height: 'auto',
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Otherwise show "chart data not available" (chartData might be empty)
+    if (chartData.length === 0) {
+      return (
+        <div className="viz-empty">
+          <AlertCircle size={48} className="viz-empty-icon" />
+          <p className="viz-empty-text">No data available to display</p>
+        </div>
+      );
+    }
+
+    const commonProps = {
+      data: chartData,
+      margin: { top: 20, right: 30, left: 20, bottom: 60 },
+    };
+
+    switch (chartType) {
+      case 'bar':
+        return (
+          <ResponsiveContainer width="100%" height={500}>
+            <BarChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1F2A3D" opacity={0.3} />
+              <XAxis
+                dataKey={xColumn}
+                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis tick={{ fill: '#8B9CB8', fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#0D1221',
+                  border: '1px solid #1F2A3D',
+                  borderRadius: '8px',
+                  color: '#EFF2F7',
+                }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Bar dataKey={yColumn} fill={CHART_COLORS[0]} radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'line':
+        return (
+          <ResponsiveContainer width="100%" height={500}>
+            <LineChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1F2A3D" opacity={0.3} />
+              <XAxis
+                dataKey={xColumn}
+                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis tick={{ fill: '#8B9CB8', fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#0D1221',
+                  border: '1px solid #1F2A3D',
+                  borderRadius: '8px',
+                  color: '#EFF2F7',
+                }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Line
+                type="monotone"
+                dataKey={yColumn}
+                stroke={CHART_COLORS[0]}
+                strokeWidth={3}
+                dot={{ fill: CHART_COLORS[1], r: 5 }}
+                activeDot={{ r: 8 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        );
+
+      case 'scatter':
+        return (
+          <ResponsiveContainer width="100%" height={500}>
+            <ScatterChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1F2A3D" opacity={0.3} />
+              <XAxis
+                dataKey={xColumn}
+                type="number"
+                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                name={xColumn}
+              />
+              <YAxis
+                dataKey={yColumn}
+                type="number"
+                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                name={yColumn}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#0D1221',
+                  border: '1px solid #1F2A3D',
+                  borderRadius: '8px',
+                  color: '#EFF2F7',
+                }}
+                cursor={{ strokeDasharray: '3 3' }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Scatter name={`${yColumn} vs ${xColumn}`} fill={CHART_COLORS[0]} />
+            </ScatterChart>
+          </ResponsiveContainer>
+        );
+
+      case 'histogram':
+        // For histogram, we need to bin the data
+        const histogramData = prepareHistogramData(chartData, xColumn);
+        return (
+          <ResponsiveContainer width="100%" height={500}>
+            <BarChart
+              data={histogramData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#1F2A3D" opacity={0.3} />
+              <XAxis
+                dataKey="bin"
+                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                label={{
+                  value: xColumn,
+                  position: 'insideBottom',
+                  offset: -10,
+                  fill: '#EFF2F7',
+                }}
+              />
+              <YAxis
+                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                label={{
+                  value: 'Frequency',
+                  angle: -90,
+                  position: 'insideLeft',
+                  fill: '#EFF2F7',
+                }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#0D1221',
+                  border: '1px solid #1F2A3D',
+                  borderRadius: '8px',
+                  color: '#EFF2F7',
+                }}
+              />
+              <Bar dataKey="frequency" fill={CHART_COLORS[2]} radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'pie':
+        return (
+          <ResponsiveContainer width="100%" height={500}>
+            <RechartsPieChart>
+              <Pie
+                data={chartData.slice(0, 8)} // Limit to 8 slices
+                dataKey={yColumn}
+                nameKey={xColumn}
+                cx="50%"
+                cy="50%"
+                outerRadius={150}
+                label={(entry: any) => `${entry[xColumn]}: ${entry[yColumn].toFixed(1)}`}
+                labelLine={{ stroke: '#8B9CB8' }}
               >
-                <span className="viz-drop-name">{col.name}</span>
-                <span className="viz-drop-badge">{col.dtype}</span>
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+                {chartData.slice(0, 8).map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#0D1221',
+                  border: '1px solid #1F2A3D',
+                  borderRadius: '8px',
+                  color: '#EFF2F7',
+                }}
+              />
+              <Legend />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        );
+
+      case 'boxplot':
+        // Boxplot requires custom implementation or different library
+        // For now, show message
+        return (
+          <div className="viz-empty">
+            <Layers size={48} className="viz-empty-icon" />
+            <p className="viz-empty-text">Box Plot visualization requires backend processing</p>
+          </div>
+        );
+
+      case 'heatmap':
+        // Heatmap requires matrix data and custom implementation
+        return (
+          <div className="viz-empty">
+            <Grid3x3 size={48} className="viz-empty-icon" />
+            <p className="viz-empty-text">Heatmap visualization requires backend processing</p>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const prepareHistogramData = (data: any[], column: string) => {
+    const values = data.map((d) => parseFloat(d[column])).filter((v) => !isNaN(v));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const binCount = 10;
+    const binSize = (max - min) / binCount;
+
+    const bins = Array.from({ length: binCount }, (_, i) => ({
+      bin: `${(min + i * binSize).toFixed(1)}-${(min + (i + 1) * binSize).toFixed(1)}`,
+      frequency: 0,
+    }));
+
+    values.forEach((value) => {
+      const binIndex = Math.min(Math.floor((value - min) / binSize), binCount - 1);
+      bins[binIndex].frequency++;
+    });
+
+    return bins;
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════
 
   return (
     <section className="panel viz-panel">
-
-      {/* ── Header ───────────────────────────────────────── */}
+      {/* Header */}
       <div className="viz-header">
         <div>
-          <h2 className="viz-title"><em>Visualization Builder</em></h2>
+          <h2 className="viz-title">
+            <em>Visualization Builder</em>
+          </h2>
           <div className="viz-title-underline" />
           <p className="viz-subtitle">{filename}</p>
         </div>
       </div>
 
-      <form onSubmit={onGenerate}>
-        {/* ── Sticky toolbar ───────────────────────────── */}
-        <div className="viz-toolbar">
-
-          {/* Chart-type pill strip */}
-          <div className="viz-pill-strip" role="radiogroup" aria-label="Chart type">
-            {CHART_DEFS.map((def) => (
-              <button
-                key={def.id}
-                type="button"
-                role="radio"
-                aria-checked={chartType === def.id}
-                className={`viz-pill${chartType === def.id ? ' viz-pill--active' : ''}`}
-                onClick={() => handleChartType(def.id)}
-              >
-                {def.icon}
-                <span>{def.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Axis controls + generate */}
-          <div className="viz-toolbar-right">
-            {loadingCols ? (
-              <span className="viz-loading-cols">Loading columns…</span>
-            ) : chartType === 'heatmap' ? (
-              <span className="viz-loading-cols" style={{ color: 'var(--color-text-muted)' }}>
-                Heatmap uses all numeric columns
-              </span>
-            ) : (
-              <>
-                <AxisToken
-                  label="X Axis"
-                  value={xColumn}
-                  options={xOptions}
-                  open={xOpen}
-                  onOpen={() => { setXOpen((p) => !p); setYOpen(false); }}
-                  onSelect={(n) => { setXColumn(n); setXOpen(false); }}
-                  dropRef={xDropRef}
-                />
-
-                {chartDef.showY && (
-                  <AxisToken
-                    label="Y Axis"
-                    value={yColumn}
-                    options={yOptions}
-                    open={yOpen}
-                    onOpen={() => { setYOpen((p) => !p); setXOpen(false); }}
-                    onSelect={(n) => { setYColumn(n); setYOpen(false); }}
-                    dropRef={yDropRef}
-                  />
-                )}
-              </>
-            )}
-
+      {/* Toolbar */}
+      <div className="viz-toolbar">
+        {/* Chart Type Selector */}
+        <div className="viz-pill-strip" role="radiogroup" aria-label="Chart type">
+          {CHART_CONFIGS.map((config) => (
             <button
-              type="submit"
-              className="btn btn-primary viz-gen-btn"
-              disabled={loadingChart || (chartType !== 'heatmap' && !xColumn) || loadingCols}
+              key={config.id}
+              type="button"
+              role="radio"
+              aria-checked={chartType === config.id}
+              className={`viz-pill${chartType === config.id ? ' viz-pill--active' : ''}`}
+              onClick={() => setChartType(config.id)}
             >
-              {loadingChart ? (
-                <><RefreshCw size={13} className="viz-spin" /> Generating…</>
-              ) : (
-                <><BarChart2 size={13} /> Generate</>
-              )}
+              {config.icon}
+              <span>{config.label}</span>
             </button>
-          </div>
+          ))}
         </div>
 
-        {error && (
-          <motion.div
-            className="error-banner"
-            style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <AlertCircle size={14} /> {error}
-          </motion.div>
-        )}
-      </form>
-
-      {/* ── Chart area ───────────────────────────────────── */}
-      <AnimatePresence mode="wait">
-        {imageBase64 ? (
-          <motion.div
-            key="chart"
-            className="viz-canvas-wrap"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-          >
-            <div className="viz-canvas-area">
-              {/* Editable title */}
-              <div
-                ref={titleRef}
-                className="viz-chart-title"
-                contentEditable
-                suppressContentEditableWarning
-                onBlur={(e) => setChartTitle(e.currentTarget.textContent ?? '')}
-              />
-
-              {/* Graph-paper canvas */}
-              <div className="viz-chart-paper">
-                <img
-                  src={`data:image/png;base64,${imageBase64}`}
-                  alt={chartTitle}
-                  className="viz-chart-img"
-                />
+        {/* Axis Controls */}
+        <div className="viz-toolbar-right">
+          {loading ? (
+            <span className="viz-loading-cols">Loading columns…</span>
+          ) : columns.length === 0 ? (
+            <span className="viz-loading-cols" style={{ color: '#F43F5E' }}>
+              Failed to load columns - check console
+            </span>
+          ) : xOptions.length === 0 ? (
+            <span className="viz-loading-cols" style={{ color: '#F59E0B' }}>
+              No valid columns for {chartConfig.label} chart (needs {chartConfig.xAccepts.join('/')})
+            </span>
+          ) : (
+            <>
+              {/* X Axis Dropdown */}
+              <div className="viz-token-wrap">
+                <span className="viz-token-label">X Axis</span>
+                <div className="viz-dropdown">
+                  <button
+                    type="button"
+                    className={`viz-token${xDropdownOpen ? ' viz-token--open' : ''}`}
+                    onClick={() => {
+                      setXDropdownOpen(!xDropdownOpen);
+                      setYDropdownOpen(false);
+                    }}
+                    disabled={xOptions.length === 0}
+                  >
+                    <span className="viz-token-name">{xColumn || 'Select…'}</span>
+                    {xColumn && (
+                      <span className="viz-token-dtype">
+                        {columns.find((c) => c.name === xColumn)?.dtype || ''}
+                      </span>
+                    )}
+                    <ChevronDown
+                      size={11}
+                      className={`viz-token-chevron${xDropdownOpen ? ' open' : ''}`}
+                    />
+                  </button>
+                  <AnimatePresence>
+                    {xDropdownOpen && (
+                      <motion.div
+                        className="viz-drop-panel"
+                        initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                        transition={{ duration: 0.14 }}
+                      >
+                        {xOptions.map((col) => (
+                          <button
+                            key={col.name}
+                            type="button"
+                            className={`viz-drop-item${xColumn === col.name ? ' active' : ''}`}
+                            onClick={() => {
+                              console.log('[VisualizationView] User selected X column:', col.name);
+                              setXColumn(col.name);
+                              setXDropdownOpen(false);
+                              setChartGenerated(false);
+                              setGeneratedChartImage('');
+                            }}
+                          >
+                            <span className="viz-drop-name">{col.name}</span>
+                            <span className="viz-drop-badge">{col.dtype}</span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
-            </div>
 
-            {/* Export + history strip */}
-            <div className="viz-export-strip">
-              <div className="viz-export-btns">
-                <button type="button" className="viz-export-btn" onClick={exportPNG}>
-                  <Download size={11} /> PNG
-                </button>
-                <button type="button" className="viz-export-btn" onClick={copyImage}>
-                  <Copy size={11} /> Copy
-                </button>
-              </div>
-
-              {chartHistory.length > 1 && (
-                <div className="viz-history">
-                  <span className="viz-history-label">
-                    <Clock size={11} /> History
-                  </span>
-                  {chartHistory.map((h, i) => (
+              {/* Y Axis Dropdown */}
+              {!chartConfig.hideYAxis && (
+                <div className="viz-token-wrap">
+                  <span className="viz-token-label">{chartConfig.yLabel}</span>
+                  <div className="viz-dropdown">
                     <button
-                      key={i}
                       type="button"
-                      className={`viz-history-thumb${i === 0 ? ' active' : ''}`}
+                      className={`viz-token${yDropdownOpen ? ' viz-token--open' : ''}`}
                       onClick={() => {
-                        setImageBase64(h.img);
-                        setChartTitle(h.title);
-                        setChartType(h.type);
+                        setYDropdownOpen(!yDropdownOpen);
+                        setXDropdownOpen(false);
                       }}
-                      title={h.title}
+                      disabled={yOptions.length === 0}
                     >
-                      <img
-                        src={`data:image/png;base64,${h.img}`}
-                        alt={`History ${i + 1}`}
+                      <span className="viz-token-name">{yColumn || 'Select…'}</span>
+                      {yColumn && (
+                        <span className="viz-token-dtype">
+                          {columns.find((c) => c.name === yColumn)?.dtype || ''}
+                        </span>
+                      )}
+                      <ChevronDown
+                        size={11}
+                        className={`viz-token-chevron${yDropdownOpen ? ' open' : ''}`}
                       />
                     </button>
-                  ))}
+                    <AnimatePresence>
+                      {yDropdownOpen && (
+                        <motion.div
+                          className="viz-drop-panel"
+                          initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                          transition={{ duration: 0.14 }}
+                        >
+                          {yOptions.map((col) => (
+                            <button
+                              key={col.name}
+                              type="button"
+                              className={`viz-drop-item${yColumn === col.name ? ' active' : ''}`}
+                              onClick={() => {
+                                console.log('[VisualizationView] User selected Y column:', col.name);
+                                setYColumn(col.name);
+                                setYDropdownOpen(false);
+                                setGeneratedChartImage('');
+                                setChartGenerated(false);
+                              }}
+                            >
+                              <span className="viz-drop-name">{col.name}</span>
+                              <span className="viz-drop-badge">{col.dtype}</span>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               )}
-            </div>
-          </motion.div>
-        ) : !loadingChart ? (
+            </>
+          )}
+
+          {/* Generate Button */}
+          <button
+            type="button"
+            className="btn btn-primary viz-gen-btn"
+            onClick={handleGenerate}
+            disabled={
+              loading ||
+              loadingChart ||
+              !xColumn ||
+              xColumn.trim() === '' ||
+              (!chartConfig.hideYAxis && (!yColumn || yColumn.trim() === ''))
+            }
+            title={
+              !xColumn || xColumn.trim() === ''
+                ? 'Please select X axis column'
+                : !chartConfig.hideYAxis && (!yColumn || yColumn.trim() === '')
+                ? 'Please select Y axis column'
+                : ''
+            }
+          >
+            {loadingChart ? (
+              <>
+                <RefreshCw size={13} className="viz-spin" /> Generating…
+              </>
+            ) : (
+              <>
+                <BarChart2 size={13} /> Generate
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <motion.div
+          className="error-banner"
+          style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <AlertCircle size={14} /> {error}
+        </motion.div>
+      )}
+
+      {/* Chart Area */}
+      <div className="viz-canvas-wrap" style={{ minHeight: '400px', marginTop: '24px' }}>
+        <AnimatePresence mode="wait">
+          {loadingChart ? (
+            <motion.div
+              key="loading"
+              className="viz-empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <RefreshCw size={48} className="viz-empty-icon viz-spin" />
+              <p className="viz-empty-text">Generating chart...</p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="chart"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35 }}
+              style={{ width: '100%' }}
+            >
+              {renderChart()}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Download Button */}
+        {chartGenerated && generatedChartImage && !loadingChart && (
           <motion.div
-            key="empty"
-            className="viz-empty"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            className="viz-export-strip"
           >
-            <BarChart2 size={36} className="viz-empty-icon" />
-            <p>Configure the options above and click <strong>Generate</strong></p>
+            <div className="viz-export-btns">
+              <button type="button" className="viz-export-btn" onClick={handleDownload}>
+                <Download size={11} /> Download PNG
+              </button>
+            </div>
           </motion.div>
-        ) : null}
-      </AnimatePresence>
+        )}
+      </div>
     </section>
   );
 }
