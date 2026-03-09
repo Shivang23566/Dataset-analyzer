@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
@@ -16,6 +17,7 @@ from app.api.ml import router as ml_router
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.limiter import limiter
+from app.core.init_db import init_db
 
 # ── Logging ──────────────────────────────────────────────────
 logging.basicConfig(
@@ -24,8 +26,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ── Lifespan ─────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app):
+    await init_db()
+    yield
+
 # ── Rate limiter ─────────────────────────────────────────────
-app = FastAPI(docs_url="/api/docs", openapi_url="/api/openapi.json")
+app = FastAPI(lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -38,12 +46,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
 
 # Register API routers
