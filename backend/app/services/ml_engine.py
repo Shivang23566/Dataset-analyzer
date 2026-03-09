@@ -4,17 +4,97 @@ Implements model recommendation, training, evaluation, and export.
 """
 import io
 import json
-import pickle
+import logging
+import os
+import time
 import warnings
+import joblib
 import numpy as np
 import pandas as pd
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 
 warnings.filterwarnings("ignore")
+logger = logging.getLogger(__name__)
+
+# ── Disk persistence ─────────────────────────────────────────
+MODEL_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "store")
+)
+os.makedirs(MODEL_DIR, exist_ok=True)
+MAX_DISK_MODELS = 50
 
 # In-memory model store (session_key -> model artifacts)
+# Each entry gets a "_created_at" timestamp for TTL eviction.
 MODEL_STORE: Dict[str, Dict] = {}
+MODEL_STORE_TTL_SECONDS = 3600  # 1 hour
+
+
+def _model_path(session_key: str) -> str:
+    safe = os.path.basename(session_key)
+    return os.path.join(MODEL_DIR, f"{safe}.joblib")
+
+
+def _save_model_to_disk(session_key: str, entry: Dict) -> None:
+    """Persist model artifacts to disk so they survive server restarts."""
+    try:
+        joblib.dump(entry, _model_path(session_key))
+        logger.info("Model saved to disk: %s", session_key)
+        _cleanup_old_model_files()
+    except Exception:
+        logger.exception("Failed to save model to disk: %s", session_key)
+
+
+def _load_model_from_disk(session_key: str) -> Optional[Dict]:
+    """Load model artifacts from disk if not in memory."""
+    path = _model_path(session_key)
+    if not os.path.isfile(path):
+        return None
+    try:
+        entry = joblib.load(path)
+        logger.info("Model loaded from disk: %s", session_key)
+        return entry
+    except Exception:
+        logger.exception("Failed to load model from disk: %s", session_key)
+        return None
+
+
+def _cleanup_old_model_files() -> None:
+    """Delete oldest model files when count exceeds MAX_DISK_MODELS."""
+    try:
+        files = [
+            os.path.join(MODEL_DIR, f)
+            for f in os.listdir(MODEL_DIR)
+            if f.endswith(".joblib")
+        ]
+        if len(files) <= MAX_DISK_MODELS:
+            return
+        files.sort(key=os.path.getmtime)
+        for f in files[: len(files) - MAX_DISK_MODELS]:
+            os.remove(f)
+            logger.info("Removed old model file: %s", f)
+    except Exception:
+        logger.exception("Error during model file cleanup")
+
+
+def _get_model_entry(session_key: str) -> Optional[Dict]:
+    """Get model entry from memory, falling back to disk."""
+    entry = MODEL_STORE.get(session_key)
+    if entry:
+        return entry
+    entry = _load_model_from_disk(session_key)
+    if entry:
+        entry["_created_at"] = time.monotonic()
+        MODEL_STORE[session_key] = entry
+    return entry
+
+
+def _evict_expired_entries():
+    """Remove MODEL_STORE entries older than TTL."""
+    now = time.monotonic()
+    expired = [k for k, v in MODEL_STORE.items() if now - v.get("_created_at", now) > MODEL_STORE_TTL_SECONDS]
+    for k in expired:
+        del MODEL_STORE[k]
 
 
 # ─────────────────────────────────────────────────────────────
@@ -480,9 +560,9 @@ def train_model(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str, Any]:
         from sklearn.decomposition import PCA
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X_raw)
-        start = datetime.now()
+        start = datetime.now(timezone.utc)
         labels = model.fit_predict(X_scaled)
-        duration = (datetime.now() - start).total_seconds()
+        duration = (datetime.now(timezone.utc) - start).total_seconds()
         metrics = {}
         n_labels = len(set(labels)) - (1 if -1 in labels else 0)
         if n_labels >= 2:
@@ -500,10 +580,14 @@ def train_model(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str, Any]:
             {"x": float(pca_data[i, 0]), "y": float(pca_data[i, 1] if pca_data.shape[1] > 1 else 0), "cluster": int(labels[i])}
             for i in range(min(500, len(pca_data)))
         ]
-        session_key = f"{model_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        MODEL_STORE[session_key] = {"model": model, "feature_names": feature_names, "model_id": model_id,
-                                     "task": task, "hyperparams": hyperparams, "metrics": metrics,
-                                     "training_date": datetime.now().isoformat()}
+        session_key = f"{model_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+        _evict_expired_entries()
+        entry = {"model": model, "feature_names": feature_names, "model_id": model_id,
+                 "task": task, "hyperparams": hyperparams, "metrics": metrics,
+                 "training_date": datetime.now(timezone.utc).isoformat(),
+                 "_created_at": time.monotonic()}
+        MODEL_STORE[session_key] = entry
+        _save_model_to_disk(session_key, entry)
         return {"success": True, "session_key": session_key, "model_id": model_id, "task": task,
                 "training_time_seconds": round(duration, 2), "metrics": metrics,
                 "cluster_distribution": cluster_dist, "n_clusters": n_labels, "visualization_data": viz_data}
@@ -531,9 +615,9 @@ def train_model(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str, Any]:
             except Exception:
                 pass
 
-    start = datetime.now()
+    start = datetime.now(timezone.utc)
     model.fit(X_train, y_train)
-    duration = (datetime.now() - start).total_seconds()
+    duration = (datetime.now(timezone.utc) - start).total_seconds()
 
     cv_scoring = "roc_auc" if task == "binary_classification" else ("f1_weighted" if "classification" in task else "r2")
     cv_mean, cv_std = None, None
@@ -604,13 +688,17 @@ def train_model(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str, Any]:
     except Exception:
         pass
 
-    session_key = f"{model_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-    MODEL_STORE[session_key] = {
+    session_key = f"{model_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    _evict_expired_entries()
+    entry = {
         "model": model, "feature_names": feature_names, "model_id": model_id,
         "task": task, "hyperparams": best_params, "metrics": metrics,
-        "training_date": datetime.now().isoformat(),
+        "training_date": datetime.now(timezone.utc).isoformat(),
         "n_train_samples": len(X_train), "n_test_samples": len(X_test), "n_features": len(feature_names),
+        "_created_at": time.monotonic(),
     }
+    MODEL_STORE[session_key] = entry
+    _save_model_to_disk(session_key, entry)
 
     return {
         "success": True, "session_key": session_key, "model_id": model_id, "task": task,
@@ -626,24 +714,25 @@ def train_model(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str, Any]:
 # ─────────────────────────────────────────────────────────────
 
 def export_model_pickle(session_key: str) -> Optional[bytes]:
-    entry = MODEL_STORE.get(session_key)
+    entry = _get_model_entry(session_key)
     if not entry:
         return None
-    return pickle.dumps(entry["model"])
+    buf = io.BytesIO()
+    joblib.dump(entry["model"], buf)
+    return buf.getvalue()
 
 
 def generate_inference_code(session_key: str) -> str:
-    entry = MODEL_STORE.get(session_key)
+    entry = _get_model_entry(session_key)
     if not entry:
         return ""
     fnames = entry.get("feature_names", [])
-    return f'''import pickle
+    return f'''import joblib
 import pandas as pd
 import numpy as np
 
 # Load trained model
-with open("model_{entry.get("model_id", "model")}.pkl", "rb") as f:
-    model = pickle.load(f)
+model = joblib.load("model_{entry.get("model_id", "model")}.joblib")
 
 # Task: {entry.get("task", "unknown")}
 # Features ({len(fnames)} total): {fnames[:5]}{"..." if len(fnames) > 5 else ""}
@@ -657,7 +746,7 @@ print("Predictions:", predictions[:5])
 
 
 def generate_model_card_md(session_key: str) -> str:
-    entry = MODEL_STORE.get(session_key)
+    entry = _get_model_entry(session_key)
     if not entry:
         return "Model not found"
     metrics = entry.get("metrics", {})

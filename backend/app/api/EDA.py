@@ -1,17 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-import pandas as pd
-import os
 from app.services.eda_engine import analyze_dataset
 from app.api import deps
+from app.api.file_utils import load_df
 from app.models.user import User
 
 router = APIRouter()
-
-# Define the path where datasets are stored (should match upload.py)
-UPLOAD_FOLDER = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "datasets")
-)
 
 class AnalysisRequest(BaseModel):
     filename: str
@@ -24,23 +18,11 @@ async def analyze_data(
     """
     Analyze a specific dataset file.
     """
-    file_path = os.path.join(UPLOAD_FOLDER, request.filename)
-    
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
-    
     try:
-        # Load the dataset
-        if file_path.endswith('.csv'):
-            df = pd.read_csv(file_path)
-        elif file_path.endswith('.json'):
-            df = pd.read_json(file_path)
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported file format")
-            
-        # Perform analysis using the service
+        df = load_df(request.filename, current_user.id)
         result = analyze_dataset(df)
         return result
-        
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

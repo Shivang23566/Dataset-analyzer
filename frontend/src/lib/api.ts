@@ -19,6 +19,21 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
+// Simple response cache to avoid redundant fetches on tab switches (TTL: 30s)
+const _cache = new Map<string, { data: unknown; ts: number }>();
+const CACHE_TTL_MS = 30_000;
+
+function getCached<T>(key: string): T | undefined {
+  const entry = _cache.get(key);
+  if (entry && Date.now() - entry.ts < CACHE_TTL_MS) return entry.data as T;
+  _cache.delete(key);
+  return undefined;
+}
+
+function setCache(key: string, data: unknown) {
+  _cache.set(key, { data, ts: Date.now() });
+}
+
 async function request<T>(path: string, init?: RequestInit, auth = false): Promise<T> {
   const headers = new Headers(init?.headers ?? {});
 
@@ -90,23 +105,33 @@ export async function uploadDataset(file: File) {
   return request<UploadedFileResponse>(`/api/upload/`, {
     method: 'POST',
     body: form,
-  });
+  }, true);
 }
 
 export async function analyzeDataset(filename: string) {
-  return request<EdaResponse>(`/api/eda/analyze`, {
+  const cacheKey = `eda:${filename}`;
+  const cached = getCached<EdaResponse>(cacheKey);
+  if (cached) return cached;
+  const data = await request<EdaResponse>(`/api/eda/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ filename }),
   }, true);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getColumns(filename: string) {
-  return request<ColumnResponse>(`/api/visualization/columns`, {
+  const cacheKey = `vizcols:${filename}`;
+  const cached = getCached<ColumnResponse>(cacheKey);
+  if (cached) return cached;
+  const data = await request<ColumnResponse>(`/api/visualization/columns`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ filename }),
   }, true);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function generateVisualization(params: {

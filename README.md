@@ -30,7 +30,7 @@ Dataset Analyzer is a production-ready, full-stack web application that eliminat
 - **🤖 Automated ML**: Train models with hyperparameter tuning and one-click deployment
 - **🔒 Enterprise Security**: JWT authentication, bcrypt encryption, role-based access
 - **⚡ Lightning Fast**: Async FastAPI backend with optimized Pandas operations
-- **🎭 Modern UI**: React 18 with TypeScript, Framer Motion animations, TailwindCSS
+- **🎭 Modern UI**: React 18 with TypeScript, Framer Motion animations, custom CSS
 
 ---
 
@@ -119,8 +119,8 @@ graph TB
 - **Framer Motion 11.11** - Advanced animations
 - **Recharts 2.x** - Interactive chart library
 - **React Router 7** - Client-side routing
-- **Axios** - HTTP client with interceptors
-- **TailwindCSS 4** - Utility-first styling
+- **Fetch API** - Native HTTP client with Bearer token auth
+- **Custom CSS** - Dark Cosmos theme styling
 - **Lucide React** - Consistent icon system
 
 </td>
@@ -338,8 +338,8 @@ dataset-analyzer/
 │   │   │   ├── MLBuilderView.tsx     # ML model training UI
 │   │   │   └── BallpitBackground.tsx # 3D animated background
 │   │   ├── lib/                      # Utilities and services
-│   │   │   ├── api.ts                # Axios API client
-│   │   │   ├── authStore.ts          # Zustand state management
+│   │   │   ├── api.ts                # Fetch-based API client
+│   │   │   ├── authStore.ts          # localStorage auth state
 │   │   │   └── types.ts              # TypeScript interfaces
 │   │   └── styles/
 │   │       └── global.css            # Dark Cosmos theme styles
@@ -626,16 +626,18 @@ Features:
 
 ---
 
-## 🔐 Security Features
+## Security Features
 
 | Feature | Implementation | Purpose |
 |---------|---------------|---------|
-| **Password Hashing** | bcrypt with salt rounds=12 | Secure password storage |
-| **JWT Tokens** | HS256 algorithm, 30-day expiry | Stateless authentication |
-| **CORS Configuration** | Origin whitelisting | Prevent CSRF attacks |
+| **Password Hashing** | bcrypt (default salt rounds) | Secure password storage |
+| **JWT Tokens** | HS256 algorithm, 30-minute expiry | Stateless authentication |
+| **CORS Configuration** | Explicit origin whitelist (configurable via `CORS_ORIGINS` env var) | Prevent CSRF attacks |
 | **SQL Injection Protection** | SQLAlchemy ORM parameterized queries | Database security |
-| **File Upload Validation** | MIME type checking, size limits | Prevent malicious files |
-| **Environment Variables** | `.env` file for secrets | No hardcoded credentials |
+| **File Upload Validation** | Extension whitelist (.csv/.json), 50 MB size limit | Prevent malicious files |
+| **Environment Variables** | `.env` file for `SECRET_KEY`, `DATABASE_URL` | No hardcoded credentials |
+| **Rate Limiting** | slowapi (60 req/min default) | Prevent abuse |
+| **Password Strength** | Backend validation (8+ chars, upper, lower, digit) | Account security |
 
 ---
 
@@ -645,15 +647,10 @@ Features:
 
 ```bash
 cd backend
-pytest test/ -v --cov=app
+pytest test/ -v
 
-# Expected output:
-# test_upload.py ......................  [ 35%]
-# test_eda.py .........................  [ 65%]
-# test_visualization.py ...............  [ 90%]
-# test_ml.py ..........................  [100%]
-# 
-# Coverage: 87%
+# Run with coverage (when test suite is expanded):
+# pytest test/ -v --cov=app
 ```
 
 ### Frontend Tests
@@ -750,7 +747,6 @@ frontend/
 ├── index.html                      # HTML entry point
 ├── package.json                    # Dependencies
 ├── vite.config.ts                 # Build config
-├── tailwind.config.ts             # Tailwind config
 └── tsconfig.json                  # TypeScript config
 ```
 
@@ -948,4 +944,18 @@ Full API docs available at: \http://localhost:8000/api/docs\
 **Issue:** \Access to fetch at 'http://localhost:8000' has been blocked by CORS policy\
 
 **Solution:**
-1. Ensure backend is running on \
+1. Ensure backend is running on the correct port and CORS_ORIGINS env var includes your frontend origin.
+
+</details>
+
+---
+
+## Known Limitations
+
+- **SQLite default**: The default SQLite database is not suitable for concurrent production workloads. Use PostgreSQL for production.
+- **No email service**: The forgot-password endpoint is a stub; no emails are actually sent.
+- **In-memory stores**: Preprocessing results and ML models are cached in memory with TTL eviction. Models are persisted to disk, but preprocessed DataFrames are not.
+- **Single-node only**: No horizontal scaling or distributed task queue (e.g., Celery) is configured.
+- **Test coverage**: The test suite is foundational and does not yet cover all endpoints or edge cases.
+- **No HTTPS**: The development server does not use TLS. A reverse proxy (e.g., Nginx) with SSL is required for production.
+- **File size limit**: Uploads are capped at 50 MB. Larger datasets require configuration changes.

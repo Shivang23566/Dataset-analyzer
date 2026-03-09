@@ -2,9 +2,12 @@
 Chart Type Definitions and Axis Rules
 """
 from __future__ import annotations
+import logging
 from typing import List, Dict, Optional, Set
 from dataclasses import dataclass
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

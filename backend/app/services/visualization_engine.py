@@ -6,6 +6,7 @@ Industry-grade visualization engine with Dark Cosmos Theme integration.
 from __future__ import annotations
 import io
 import base64
+import logging
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
@@ -15,6 +16,8 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 # ═══ DARK COSMOS THEME COLORS ═══
 COLOR_PRIMARY = '#6366F1'      # Indigo
@@ -609,7 +612,5 @@ def generate_visualization(
             result["chart_type"] = chart_type
         return result
     except Exception as e:
-        import traceback
-        print(f"ERROR in chart generation: {str(e)}")
-        print(traceback.format_exc())
+        logger.exception("Chart generation failed: %s", e)
         return _error_response(f"Chart generation failed: {str(e)}", code="GENERATION_ERROR")

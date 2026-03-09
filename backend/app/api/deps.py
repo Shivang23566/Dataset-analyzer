@@ -12,7 +12,7 @@ from app.schemas import token as token_schemas
 from sqlalchemy.future import select
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
+    tokenUrl="/auth/login"
 )
 
 async def get_current_user(

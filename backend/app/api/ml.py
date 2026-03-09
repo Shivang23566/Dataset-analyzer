@@ -1,23 +1,25 @@
 """
 ML Builder API endpoints
-POST /api/ml/columns        → Get columns for target selection
-POST /api/ml/detect-task    → Auto-detect task type
-POST /api/ml/recommend      → AI model recommendation
-POST /api/ml/cards          → Get model cards for the task
-POST /api/ml/train          → Train selected model
-GET  /api/ml/download/{key} → Download trained model pickle
-GET  /api/ml/inference-code/{key} → Get inference code snippet
-GET  /api/ml/model-card/{key}     → Get model card markdown
+POST /api/ml/columns        -> Get columns for target selection
+POST /api/ml/detect-task    -> Auto-detect task type
+POST /api/ml/recommend      -> AI model recommendation
+POST /api/ml/cards          -> Get model cards for the task
+POST /api/ml/train          -> Train selected model
+GET  /api/ml/download/{key} -> Download trained model
+GET  /api/ml/inference-code/{key} -> Get inference code snippet
+GET  /api/ml/model-card/{key}     -> Get model card markdown
 """
-import os
 import io
+import asyncio
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse, PlainTextResponse
 from pydantic import BaseModel
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 import pandas as pd
 
 from app.api import deps
+from app.api.file_utils import load_df
 from app.models.user import User
 from app.services.ml_engine import (
     detect_task_type,
@@ -29,22 +31,8 @@ from app.services.ml_engine import (
     generate_model_card_md,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
-
-UPLOAD_FOLDER = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "datasets")
-)
-
-
-def _load_df(filename: str) -> pd.DataFrame:
-    path = os.path.join(UPLOAD_FOLDER, filename)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail=f"File not found: {filename}")
-    if filename.endswith(".csv"):
-        return pd.read_csv(path)
-    elif filename.endswith(".json"):
-        return pd.read_json(path)
-    raise HTTPException(status_code=400, detail="Unsupported file format")
 
 
 class FileRequest(BaseModel):
@@ -83,8 +71,7 @@ async def get_columns(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Return column metadata for target selection."""
-    df = _load_df(request.filename)
-    import numpy as np
+    df = load_df(request.filename, current_user.id)
     cols = []
     for c in df.columns:
         dtype = str(df[c].dtype)
@@ -100,7 +87,7 @@ async def detect_task(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Auto-detect ML task type from the target column."""
-    df = _load_df(request.filename)
+    df = load_df(request.filename, current_user.id)
     try:
         return detect_task_type(df, request.target_col)
     except Exception as e:
@@ -113,7 +100,7 @@ async def recommend(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Get AI model recommendation for the dataset."""
-    df = _load_df(request.filename)
+    df = load_df(request.filename, current_user.id)
     try:
         task_info = {}
         if request.target_col:
@@ -144,8 +131,8 @@ async def train(
     request: TrainRequest,
     current_user: User = Depends(deps.get_current_active_user),
 ):
-    """Train the selected model and return evaluation metrics."""
-    df = _load_df(request.filename)
+    """Train the selected model and return evaluation metrics (runs in thread pool)."""
+    df = load_df(request.filename, current_user.id)
     config = {
         "model_id": request.model_id,
         "target_col": request.target_col,
@@ -157,7 +144,8 @@ async def train(
         "random_state": request.random_state,
     }
     try:
-        result = _train_model(df, config)
+        # Run CPU-bound training in a thread pool to avoid blocking the event loop
+        result = await asyncio.to_thread(_train_model, df, config)
         if not result.get("success"):
             raise HTTPException(status_code=422, detail=result.get("error", "Training failed"))
         return result
@@ -172,14 +160,14 @@ async def download_model(
     session_key: str,
     current_user: User = Depends(deps.get_current_active_user),
 ):
-    """Download trained model as a pickle file."""
+    """Download trained model as a joblib file."""
     pkl_bytes = export_model_pickle(session_key)
     if pkl_bytes is None:
         raise HTTPException(status_code=404, detail="Model not found. Train a model first.")
     return StreamingResponse(
         io.BytesIO(pkl_bytes),
         media_type="application/octet-stream",
-        headers={"Content-Disposition": f"attachment; filename=model_{session_key}.pkl"},
+        headers={"Content-Disposition": f"attachment; filename=model_{session_key}.joblib"},
     )
 
 

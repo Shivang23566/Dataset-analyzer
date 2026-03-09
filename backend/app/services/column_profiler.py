@@ -5,8 +5,6 @@ from __future__ import annotations
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Any
-from functools import lru_cache
-import hashlib
 
 
 class ColumnMetadata:
@@ -50,21 +48,7 @@ class ColumnProfiler:
     
     HIGH_CARDINALITY_THRESHOLD = 0.5  # 50% uniqueness ratio
     LOW_CARDINALITY_INT_THRESHOLD = 20
-    
-    @staticmethod
-    def _generate_cache_key(df: pd.DataFrame) -> str:
-        """Generate a cache key based on dataframe shape and column names"""
-        key_str = f"{df.shape}_{','.join(df.columns.tolist())}"
-        return hashlib.md5(key_str.encode()).hexdigest()
-    
-    @classmethod
-    @lru_cache(maxsize=100)
-    def _cached_profile(cls, cache_key: str, df_tuple: tuple) -> Dict[str, ColumnMetadata]:
-        """Cached profiling to avoid re-profiling same dataset"""
-        # Reconstruct dataframe from tuple (this is a workaround for caching)
-        # In production, use Redis or similar for proper caching
-        return {}
-    
+
     @classmethod
     def profile_columns(cls, df: pd.DataFrame) -> List[ColumnMetadata]:
         """

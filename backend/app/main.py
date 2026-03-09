@@ -1,33 +1,52 @@
-from fastapi import FastAPI, HTTPException
+import logging
+import os
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
 from app.api.auth import router as auth_router
 from app.api.upload import router as upload_router
 from app.api.EDA import router as eda_router
 from app.api.visualization import router as visualization_router
 from app.api.preprocess import router as preprocess_router
 from app.api.ml import router as ml_router
+from app.core.config import settings
 from app.core.database import engine, Base
-import os
-    
-from fastapi.middleware.cors import CORSMiddleware
+from app.core.limiter import limiter
 
+# ── Logging ──────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# ── Rate limiter ─────────────────────────────────────────────
 app = FastAPI(docs_url="/api/docs", openapi_url="/api/openapi.json")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Configure CORS
+# ── CORS — allow_credentials=True requires explicit origins, not "*" ──
+cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins for development
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
 
 @app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-# Register API routers first
+
+# Register API routers
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(upload_router, prefix="/api", tags=["upload"])
 app.include_router(eda_router, prefix="/api/eda", tags=["eda"])
@@ -35,13 +54,14 @@ app.include_router(visualization_router, prefix="/api/visualization", tags=["vis
 app.include_router(preprocess_router, prefix="/api/preprocess", tags=["preprocess"])
 app.include_router(ml_router, prefix="/api/ml", tags=["ml"])
 
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "ok"}
 
-# Frontend serving configuration
-# Check for built React app first (dist folder), fallback to frontend root.
+
+# ── Frontend serving ─────────────────────────────────────────
 frontend_dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 
@@ -49,12 +69,13 @@ active_frontend_dir = None
 
 if os.path.exists(frontend_dist_dir):
     active_frontend_dir = frontend_dist_dir
-    print(f"[OK] Frontend active directory: {frontend_dist_dir}")
+    logger.info("Frontend active directory: %s", frontend_dist_dir)
 elif os.path.exists(frontend_dir):
     active_frontend_dir = frontend_dir
-    print(f"[OK] Frontend active directory: {frontend_dir}")
+    logger.info("Frontend active directory: %s", frontend_dir)
 else:
-    print(f"[WARN] Frontend directory not found at {frontend_dir} or {frontend_dist_dir}")
+    logger.warning("Frontend directory not found at %s or %s", frontend_dir, frontend_dist_dir)
+
 
 @app.get("/{full_path:path}")
 async def serve_frontend(full_path: str):
@@ -64,7 +85,6 @@ async def serve_frontend(full_path: str):
     if not active_frontend_dir:
         raise HTTPException(status_code=404, detail="Frontend not available")
 
-    # Avoid intercepting API endpoints if route ordering changes in future edits.
     if full_path.startswith("api/") or full_path.startswith("auth/"):
         raise HTTPException(status_code=404, detail="Not Found")
 
@@ -72,7 +92,6 @@ async def serve_frontend(full_path: str):
     if requested:
         candidate = os.path.abspath(os.path.join(active_frontend_dir, requested))
 
-        # Block path traversal and serve actual files directly.
         if os.path.commonpath([active_frontend_dir, candidate]) == active_frontend_dir and os.path.isfile(candidate):
             return FileResponse(candidate)
 

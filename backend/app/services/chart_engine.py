@@ -5,6 +5,7 @@ Supports Dark Cosmos Theme and extensive customization options
 from __future__ import annotations
 import io
 import base64
+import logging
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -18,6 +19,8 @@ import math
 
 from .column_profiler import ColumnProfiler, ColumnMetadata
 from .chart_rules import ChartRules
+
+logger = logging.getLogger(__name__)
 
 
 # ═══ DARK COSMOS THEME COLORS ═══

@@ -942,15 +942,36 @@ def run_pipeline(df: pd.DataFrame, pipeline_config: Dict[str, Any]) -> Dict[str,
 # EXPORT HELPERS
 # ─────────────────────────────────────────────────────────────
 
-PROCESSED_STORE: Dict[str, pd.DataFrame] = {}
+PROCESSED_STORE: Dict[str, Dict] = {}
+PROCESSED_STORE_TTL_SECONDS = 3600  # 1 hour
+MAX_STORE_SIZE = 50
+
+
+def _evict_processed():
+    """Remove expired entries and enforce MAX_STORE_SIZE cap."""
+    import time as _time
+    now = _time.monotonic()
+    expired = [k for k, v in PROCESSED_STORE.items() if now - v.get("_created_at", now) > PROCESSED_STORE_TTL_SECONDS]
+    for k in expired:
+        del PROCESSED_STORE[k]
+    # If still over capacity, drop oldest entries
+    if len(PROCESSED_STORE) > MAX_STORE_SIZE:
+        by_age = sorted(PROCESSED_STORE.items(), key=lambda kv: kv[1].get("_created_at", 0))
+        for k, _ in by_age[: len(PROCESSED_STORE) - MAX_STORE_SIZE]:
+            del PROCESSED_STORE[k]
 
 
 def store_processed_df(session_key: str, df: pd.DataFrame):
-    PROCESSED_STORE[session_key] = df.copy()
+    import time as _time
+    _evict_processed()
+    PROCESSED_STORE[session_key] = {"df": df.copy(), "_created_at": _time.monotonic()}
 
 
 def get_processed_df(session_key: str) -> Optional[pd.DataFrame]:
-    return PROCESSED_STORE.get(session_key)
+    entry = PROCESSED_STORE.get(session_key)
+    if entry is None:
+        return None
+    return entry.get("df")
 
 
 def export_dataframe(df: pd.DataFrame, fmt: str) -> Tuple[bytes, str, str]:

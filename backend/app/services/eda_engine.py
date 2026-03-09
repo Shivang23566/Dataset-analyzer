@@ -3,9 +3,12 @@
 EDA Engine Module for Dataset Analysis for FastAPI backend
 """
 
+import logging
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Any, Union
+
+logger = logging.getLogger(__name__)
 
 
 def analyze_dataset(df: pd.DataFrame) -> Dict[str, Any]:

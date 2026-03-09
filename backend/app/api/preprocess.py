@@ -1,19 +1,21 @@
 """
 Preprocessing API endpoints
-POST /api/preprocess/health     → Dataset health dashboard
-POST /api/preprocess/recommend  → Missing value recommendations
-POST /api/preprocess/run        → Run full pipeline
-POST /api/preprocess/download   → Download processed dataset
+POST /api/preprocess/health     -> Dataset health dashboard
+POST /api/preprocess/recommend  -> Missing value recommendations
+POST /api/preprocess/run        -> Run full pipeline
+POST /api/preprocess/download   -> Download processed dataset
 """
 import os
 import io
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 import pandas as pd
 
 from app.api import deps
+from app.api.file_utils import load_df, UPLOAD_FOLDER
 from app.models.user import User
 from app.services.preprocessing_engine import (
     get_dataset_health,
@@ -26,22 +28,8 @@ from app.services.preprocessing_engine import (
     step_train_test_split,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
-
-UPLOAD_FOLDER = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "datasets")
-)
-
-
-def _load_df(filename: str) -> pd.DataFrame:
-    path = os.path.join(UPLOAD_FOLDER, filename)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="File not found")
-    if filename.endswith(".csv"):
-        return pd.read_csv(path)
-    elif filename.endswith(".json"):
-        return pd.read_json(path)
-    raise HTTPException(status_code=400, detail="Unsupported file format")
 
 
 class HealthRequest(BaseModel):
@@ -70,7 +58,7 @@ async def dataset_health(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Return health dashboard data for the uploaded dataset."""
-    df = _load_df(request.filename)
+    df = load_df(request.filename, current_user.id)
     try:
         health = get_dataset_health(df)
         return health
@@ -84,7 +72,7 @@ async def recommend_imputation(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Return AI-recommended imputation strategies per column."""
-    df = _load_df(request.filename)
+    df = load_df(request.filename, current_user.id)
     try:
         return {"recommendations": get_missing_recommendations(df)}
     except Exception as e:
@@ -97,7 +85,7 @@ async def detect_outliers_endpoint(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Detect outliers in the dataset."""
-    df = _load_df(request.filename)
+    df = load_df(request.filename, current_user.id)
     try:
         return {"outliers": _detect_outliers(df, method=request.method, threshold=request.threshold)}
     except Exception as e:
@@ -112,18 +100,19 @@ async def run_preprocessing_pipeline(
     """Run the full preprocessing pipeline on the uploaded dataset."""
     import hashlib, time, re
 
-    df = _load_df(request.filename)
+    df = load_df(request.filename, current_user.id)
     try:
         results, processed_df = run_pipeline(df, request.config)
 
-        # Generate a unique session key
         session_key = hashlib.md5(f"{request.filename}_{time.time()}".encode()).hexdigest()[:12]
         store_processed_df(session_key, processed_df)
 
-        # ── Save processed CSV to disk so ML feature can pick it up ──
-        base = re.sub(r"\.[^.]+$", "", request.filename)   # strip extension
+        # Save processed CSV to the user's directory so ML feature can pick it up
+        user_dir = os.path.join(UPLOAD_FOLDER, str(current_user.id))
+        os.makedirs(user_dir, exist_ok=True)
+        base = re.sub(r"\.[^.]+$", "", os.path.basename(request.filename))
         processed_filename = f"preprocessed_{base}.csv"
-        processed_path = os.path.join(UPLOAD_FOLDER, processed_filename)
+        processed_path = os.path.join(user_dir, processed_filename)
         processed_df.to_csv(processed_path, index=False)
 
         results["session_key"] = session_key
@@ -161,7 +150,7 @@ async def get_columns(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Return column list with dtypes for the dataset."""
-    df = _load_df(request.filename)
+    df = load_df(request.filename, current_user.id)
     cols = [{"name": c, "dtype": str(df[c].dtype), "missing_pct": round(float(df[c].isnull().mean() * 100), 2),
               "nunique": int(df[c].nunique())} for c in df.columns]
     return {"columns": cols}

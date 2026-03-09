@@ -1,23 +1,26 @@
-from pydantic_settings import BaseSettings
+import secrets
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
+def _default_secret_key() -> str:
+    """Generate a secure random key. Override via SECRET_KEY env var or .env file."""
+    return secrets.token_urlsafe(64)
+
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+
     PROJECT_NAME: str = "Dataset Analyser"
     API_V1_STR: str = "/api"
-    
-    # SECURITY
-    SECRET_KEY: str = "jhjbdvaslidvbaJNAISBibsbasIBSbsaibsAJSB" # TODO: Change this to a secure random string
+
+    # SECURITY — set SECRET_KEY in .env or environment for stable tokens across restarts
+    SECRET_KEY: str = _default_secret_key()
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
-    # DATABASE
-    # Format: postgresql+asyncpg://user:password@host:port/dbname
-    # Password "SK@124578" must be URL encoded as "SK%40124578" because '@' is a delimiter
-    # Using SQLite for local development
-    DATABASE_URL: str = "sqlite+aiosqlite:///./dataset_analyser.db" 
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    # DATABASE
+    DATABASE_URL: str = "sqlite+aiosqlite:///./dataset_analyser.db"
+
+    # CORS — all common dev origins; override via CORS_ORIGINS env var in production
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000"
 
 settings = Settings()
