@@ -8,7 +8,7 @@ export default function SignupPage() {
   const onSubmit = async (email: string, password: string) => {
     await backendSignup({ email, password });
     await backendLogin({ email, password });
-    navigate('/workspace');
+    navigate('/dashboard');
   };
 
   return (

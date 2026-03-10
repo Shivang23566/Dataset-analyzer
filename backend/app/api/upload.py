@@ -2,9 +2,12 @@ import logging
 import os
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
+from app.core.database import get_db
 from app.models.user import User
+from app.models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,6 +25,8 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 async def upload_file(
     file: UploadFile = File(...),
     current_user: User = Depends(deps.get_current_active_user),
+    _: User = Depends(deps.check_dataset_limit),
+    db: AsyncSession = Depends(get_db),
 ):
     original_filename = os.path.basename(file.filename or "upload")
     _, extension = os.path.splitext(original_filename)
@@ -37,6 +42,7 @@ async def upload_file(
     os.makedirs(user_dir, exist_ok=True)
 
     file_path = os.path.join(user_dir, original_filename)
+    saved_filename = original_filename
 
     if os.path.exists(file_path):
         name, ext = os.path.splitext(original_filename)
@@ -45,7 +51,7 @@ async def upload_file(
             new_filename = f"{name}_{counter}{ext}"
             file_path = os.path.join(user_dir, new_filename)
             if not os.path.exists(file_path):
-                original_filename = new_filename
+                saved_filename = new_filename
                 break
             counter += 1
 
@@ -64,9 +70,46 @@ async def upload_file(
         with open(file_path, "wb") as f:
             f.write(content)
 
+        # After file is saved to disk, record it in database
+        dataset_id = None
+        try:
+            dataset_record = Dataset(
+                user_id=current_user.id,
+                original_filename=file.filename or "upload",
+                saved_filename=saved_filename,
+                storage_path=str(file_path),
+                file_size_bytes=len(content),
+            )
+            db.add(dataset_record)
+            await db.commit()
+            await db.refresh(dataset_record)
+            dataset_id = dataset_record.id
+
+            # Try to get row/column counts with pandas
+            try:
+                import pandas as pd
+                if saved_filename.endswith('.csv'):
+                    df = pd.read_csv(file_path)
+                elif saved_filename.endswith('.json'):
+                    df = pd.read_json(file_path)
+                else:
+                    df = None
+
+                if df is not None:
+                    dataset_record.row_count = len(df)
+                    dataset_record.col_count = len(df.columns)
+                    await db.commit()
+            except Exception:
+                pass  # metadata is optional, don't fail upload
+
+        except Exception as db_error:
+            logger.warning("Failed to record dataset in database: %s", db_error)
+            # File is already saved, so don't fail the upload
+
         return {
             "message": "File uploaded successfully",
-            "saved_as": original_filename,
+            "saved_as": saved_filename,
+            "dataset_id": dataset_id,
         }
 
     except HTTPException:

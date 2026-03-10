@@ -35,6 +35,8 @@ import type {
   PreprocessColumnMeta,
   PipelineRunResponse,
 } from '../lib/types';
+import { extractErrorMessage, getUpgradeMessage, isLimitError, isFeatureLockedError } from '../lib/errorUtils';
+import { useToast } from '../hooks/useToast';
 
 // ── Step config types ─────────────────────────────────────────
 type DupConfig = {
@@ -218,6 +220,7 @@ function StepCard({
 
 // ── Main Component ────────────────────────────────────────────
 export default function PreprocessingView({ filename, onProcessed }: { filename: string; onProcessed?: (filename: string) => void }) {
+  const { showToast } = useToast();
 
   // ── Phase 1 state ─────────────────────────────────────────
   const [health,        setHealth]        = useState<DatasetHealthResponse | null>(null);
@@ -276,9 +279,15 @@ export default function PreprocessingView({ filename, onProcessed }: { filename:
           if (!isNumericDtype(col.dtype)) encoding[col.name] = 'label';
         });
         setFeatureConfig((prev) => ({ ...prev, encoding }));
-      } catch (err) {
-        if (!cancelled)
-          setHealthError(err instanceof Error ? err.message : 'Failed to load dataset health');
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const msg = extractErrorMessage(err);
+          if (isLimitError(msg) || isFeatureLockedError(msg)) {
+            const upgrade = getUpgradeMessage('preprocessing_locked');
+            showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
+          }
+          setHealthError(msg);
+        }
       } finally {
         if (!cancelled) setHealthLoading(false);
       }
@@ -385,8 +394,15 @@ export default function PreprocessingView({ filename, onProcessed }: { filename:
       if (result.processed_filename) {
         onProcessed?.(result.processed_filename);
       }
-    } catch (err) {
-      setPipelineError(err instanceof Error ? err.message : 'Pipeline run failed');
+    } catch (err: unknown) {
+      const msg = extractErrorMessage(err);
+      if (isLimitError(msg) || isFeatureLockedError(msg)) {
+        const upgrade = getUpgradeMessage('preprocessing_locked');
+        showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
+      } else {
+        showToast({ type: 'error', title: 'Pipeline failed', message: msg, duration: 7000 });
+      }
+      setPipelineError(msg);
     } finally {
       setPipelineRunning(false);
     }

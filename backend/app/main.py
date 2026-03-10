@@ -1,12 +1,16 @@
 import logging
 import os
+import asyncio
 from contextlib import asynccontextmanager
+from functools import partial
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from alembic.config import Config
+from alembic import command
 
 from app.api.auth import router as auth_router
 from app.api.upload import router as upload_router
@@ -14,10 +18,13 @@ from app.api.EDA import router as eda_router
 from app.api.visualization import router as visualization_router
 from app.api.preprocess import router as preprocess_router
 from app.api.ml import router as ml_router
+from app.api.dashboard import router as dashboard_router
+from app.api.payments import router as payments_router
+from app.api.coupons import router as coupons_router
+from app.api.admin import router as admin_router
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.limiter import limiter
-from app.core.init_db import init_db
 
 # ── Logging ──────────────────────────────────────────────────
 logging.basicConfig(
@@ -29,7 +36,12 @@ logger = logging.getLogger(__name__)
 # ── Lifespan ─────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app):
-    await init_db()
+    # Run any pending Alembic migrations on startup
+    loop = asyncio.get_event_loop()
+    alembic_cfg = Config("alembic.ini")
+    await loop.run_in_executor(
+        None, partial(command.upgrade, alembic_cfg, "head")
+    )
     yield
 
 # ── Rate limiter ─────────────────────────────────────────────
@@ -38,10 +50,9 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── CORS — allow_credentials=True requires explicit origins, not "*" ──
-cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,6 +66,10 @@ app.include_router(eda_router, prefix="/api/eda", tags=["eda"])
 app.include_router(visualization_router, prefix="/api/visualization", tags=["visualization"])
 app.include_router(preprocess_router, prefix="/api/preprocess", tags=["preprocess"])
 app.include_router(ml_router, prefix="/api/ml", tags=["ml"])
+app.include_router(dashboard_router)
+app.include_router(payments_router)
+app.include_router(coupons_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")
@@ -64,19 +79,24 @@ async def health_check():
 
 
 # ── Frontend serving ─────────────────────────────────────────
+# Priority: backend/static (production build) > frontend/dist > frontend (dev)
+static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static"))
 frontend_dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 
 active_frontend_dir = None
 
-if os.path.exists(frontend_dist_dir):
+if os.path.exists(static_dir) and os.path.isfile(os.path.join(static_dir, "index.html")):
+    active_frontend_dir = static_dir
+    logger.info("Frontend serving from: %s (production build)", static_dir)
+elif os.path.exists(frontend_dist_dir) and os.path.isfile(os.path.join(frontend_dist_dir, "index.html")):
     active_frontend_dir = frontend_dist_dir
-    logger.info("Frontend active directory: %s", frontend_dist_dir)
-elif os.path.exists(frontend_dir):
+    logger.info("Frontend serving from: %s", frontend_dist_dir)
+elif os.path.exists(frontend_dir) and os.path.isfile(os.path.join(frontend_dir, "index.html")):
     active_frontend_dir = frontend_dir
-    logger.info("Frontend active directory: %s", frontend_dir)
+    logger.info("Frontend serving from: %s (dev)", frontend_dir)
 else:
-    logger.warning("Frontend directory not found at %s or %s", frontend_dir, frontend_dist_dir)
+    logger.warning("Frontend not found. Run 'cd frontend && npm run build' to build.")
 
 
 @app.get("/{full_path:path}")
@@ -85,9 +105,14 @@ async def serve_frontend(full_path: str):
     Serve built frontend assets and fallback to index.html for SPA routes.
     """
     if not active_frontend_dir:
-        raise HTTPException(status_code=404, detail="Frontend not available")
+        raise HTTPException(
+            status_code=404,
+            detail="Frontend not built. Run: cd frontend && npm run build"
+        )
 
-    if full_path.startswith("api/") or full_path.startswith("auth/"):
+    # API routes should 404 if they reach here (not handled by routers)
+    api_prefixes = ("api/", "auth/", "dashboard/", "payments/", "coupons/", "admin/", "health")
+    if any(full_path.startswith(p) or full_path == p.rstrip('/') for p in api_prefixes):
         raise HTTPException(status_code=404, detail="Not Found")
 
     requested = full_path.lstrip("/")

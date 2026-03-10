@@ -1,12 +1,17 @@
 import { clearAuth, getToken, saveAuth } from './authStore';
 import type {
   ColumnResponse,
+  DashboardDataset,
+  DashboardDownload,
+  DashboardSession,
+  DashboardSummary,
   DatasetHealthResponse,
   EdaResponse,
   LoginPayload,
   MLColumnMeta,
   ModelCard,
   ModelRecommendation,
+  PaymentStatus,
   PipelineRunResponse,
   PreprocessColumnsResponse,
   SignupPayload,
@@ -278,4 +283,50 @@ export async function getModelCard(sessionKey: string): Promise<string> {
   });
   if (!resp.ok) throw new Error('Failed to fetch model card');
   return resp.text();
+}
+
+// ── Dashboard API ─────────────────────────────────────────
+
+export async function getDashboardSummary() {
+  return request<DashboardSummary>('/dashboard/summary', {
+    method: 'GET',
+  }, true);
+}
+
+export async function getDashboardDatasets() {
+  return request<{ datasets: DashboardDataset[]; total: number }>(
+    '/dashboard/datasets',
+    { method: 'GET' },
+    true
+  );
+}
+
+export async function getDashboardSessions() {
+  return request<{ sessions: DashboardSession[]; total: number }>(
+    '/dashboard/sessions',
+    { method: 'GET' },
+    true
+  );
+}
+
+export async function getDashboardDownloads() {
+  return request<{ downloads: DashboardDownload[]; total: number }>(
+    '/dashboard/downloads',
+    { method: 'GET' },
+    true
+  );
+}
+
+export async function deleteDataset(datasetId: number) {
+  return request<{ message: string }>(
+    `/dashboard/datasets/${datasetId}`,
+    { method: 'DELETE' },
+    true
+  );
+}
+
+export async function getPaymentStatus() {
+  return request<PaymentStatus>('/payments/status', {
+    method: 'GET',
+  }, true);
 }

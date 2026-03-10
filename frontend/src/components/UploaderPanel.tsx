@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileSpreadsheet, CheckCircle } from 'lucide-react';
 import { uploadDataset } from '../lib/api';
+import { extractErrorMessage, getUpgradeMessage, isLimitError } from '../lib/errorUtils';
+import { useToast } from '../hooks/useToast';
 
 type UploaderPanelProps = {
   currentFile: string;
@@ -24,8 +26,8 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [phaseIndex, setPhaseIndex] = useState(0);
-  const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
 
   // Cycle through phase labels while loading
   useEffect(() => {
@@ -41,31 +43,43 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0] ?? null);
-    setError('');
   };
 
   const handleUpload = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!file) {
-      setError('Choose a CSV or JSON dataset first.');
+      showToast({ type: 'warning', title: 'No file selected', message: 'Choose a CSV or JSON dataset first.', duration: 4000 });
       return;
     }
 
-    setError('');
     setLoading(true);
     const t0 = Date.now();
 
     try {
       const result = await uploadDataset(file);
-      // Guarantee the animation shows for the full minimum duration
       const elapsed = Date.now() - t0;
       if (elapsed < MIN_LOADER_MS) await sleep(MIN_LOADER_MS - elapsed);
+      showToast({ type: 'success', title: 'Dataset uploaded', message: `${file.name} is ready for analysis.`, duration: 4000 });
       onUploaded(result.saved_as);
       setFile(null);
-    } catch (err) {
+    } catch (err: unknown) {
       const elapsed = Date.now() - t0;
       if (elapsed < MIN_LOADER_MS) await sleep(MIN_LOADER_MS - elapsed);
-      setError(err instanceof Error ? err.message : 'Upload failed');
+
+      const message = extractErrorMessage(err);
+
+      if (isLimitError(message)) {
+        const upgrade = getUpgradeMessage('dataset_limit');
+        showToast({
+          type: 'upgrade',
+          title: upgrade.title,
+          message: upgrade.message,
+          ctaText: upgrade.cta,
+          duration: 0,
+        });
+      } else {
+        showToast({ type: 'error', title: 'Upload failed', message, duration: 6000 });
+      }
     } finally {
       setLoading(false);
     }
@@ -92,10 +106,8 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.35, ease: 'easeOut' }}
           >
-            {/* Noise texture overlay */}
             <div className="ul-noise" aria-hidden="true" />
 
-            {/* Sweeping background lines */}
             <div className="upload-longfazers" aria-hidden="true">
               <span />
               <span />
@@ -103,21 +115,18 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
               <span />
             </div>
 
-            {/* ── Corner: top-left brand ── */}
             <div className="ul-corner ul-corner--tl">
               <div className="ul-brand">
                 <span className="ul-brand-dot" />
-                DATASET ANALYZER
+                DATALENS
               </div>
             </div>
 
-            {/* ── Corner: top-right processing status ── */}
             <div className="ul-corner ul-corner--tr">
               <div className="ul-status-label">PROCESSING</div>
               <div className="ul-status-sub">SCHEMA: ACTIVE</div>
             </div>
 
-            {/* ── Character loader ── */}
             <div className="upload-loader-scene">
               <div className="upload-loader">
                 <span>
@@ -133,7 +142,6 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
               </div>
             </div>
 
-            {/* ── Centre info ── */}
             <div className="upload-loader-info">
               <AnimatePresence mode="wait">
                 <motion.h3
@@ -155,7 +163,6 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
               </div>
             </div>
 
-            {/* ── Corner: bottom-left nominal ── */}
             <div className="ul-corner ul-corner--bl">
               <div className="ul-nominal">
                 <span className="ul-nominal-dot" />
@@ -182,7 +189,6 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
             </div>
 
             <form onSubmit={handleUpload} className="upload-form-redesigned">
-              {/* SR-accessible hidden file input */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -192,7 +198,6 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
                 aria-label="Select dataset file"
               />
 
-              {/* Floating selection box */}
               <motion.div
                 role="button"
                 tabIndex={0}
@@ -257,7 +262,6 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
                 </AnimatePresence>
               </motion.div>
 
-              {/* Submit button */}
               <motion.button
                 type="submit"
                 className="btn btn-primary upload-submit-btn"
@@ -278,15 +282,6 @@ export default function UploaderPanel({ currentFile, onUploaded }: UploaderPanel
               >
                 <CheckCircle size={14} />
                 Current dataset: {currentFile}
-              </motion.div>
-            )}
-            {error && (
-              <motion.div
-                className="error-banner"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                {error}
               </motion.div>
             )}
           </motion.div>

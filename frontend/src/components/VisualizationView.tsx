@@ -119,7 +119,7 @@ const CHART_CONFIGS: ChartConfig[] = [
   },
 ];
 
-const CHART_COLORS = ['#6366F1', '#0EA5E9', '#8B5CF6', '#10B981', '#F59E0B', '#F43F5E'];
+const CHART_COLORS = ['#2eb8a0', '#c9a84c', '#b8973f', '#10B981', '#F59E0B', '#F43F5E'];
 
 type AggregationType = 'sum' | 'avg' | 'count' | 'max' | 'min';
 

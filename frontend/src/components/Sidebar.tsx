@@ -144,7 +144,7 @@ export default function Sidebar({ active, onChange, hasFile }: SidebarProps) {
               transition={{ duration: 0.2 }}
               className="sidebar-brand-text"
             >
-              <h2>Dataset Analyzer</h2>
+              <h2>DataLens</h2>
               <p>Workspace</p>
             </motion.div>
           )}

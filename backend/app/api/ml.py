@@ -17,10 +17,13 @@ from fastapi.responses import StreamingResponse, PlainTextResponse
 from pydantic import BaseModel
 from typing import Any, Dict, Optional
 import pandas as pd
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.api.file_utils import load_df
 from app.models.user import User
+from app.core.database import get_db
+from app.api.tracking import record_session, record_download
 from app.services.ml_engine import (
     detect_task_type,
     recommend_model,
@@ -129,7 +132,8 @@ async def model_cards(
 @router.post("/train")
 async def train(
     request: TrainRequest,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
+    db: AsyncSession = Depends(get_db),
 ):
     """Train the selected model and return evaluation metrics (runs in thread pool)."""
     df = load_df(request.filename, current_user.id)
@@ -148,6 +152,28 @@ async def train(
         result = await asyncio.to_thread(_train_model, df, config)
         if not result.get("success"):
             raise HTTPException(status_code=422, detail=result.get("error", "Training failed"))
+
+        # Track this session (non-critical — wrapped in try/except)
+        try:
+            summary = {
+                "filename": request.filename,
+                "model_name": result.get("model_name"),
+                "task_type": result.get("task_type"),
+                "accuracy": result.get("metrics", {}).get("accuracy")
+                    or result.get("metrics", {}).get("r2_score"),
+                "session_key": result.get("session_key"),
+            }
+            await record_session(
+                db=db,
+                user_id=current_user.id,
+                session_key=result.get("session_key", ""),
+                session_type="ml",
+                filename=request.filename,
+                result_summary=summary,
+            )
+        except Exception:
+            pass
+
         return result
     except HTTPException:
         raise
@@ -158,12 +184,27 @@ async def train(
 @router.get("/download/{session_key}")
 async def download_model(
     session_key: str,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
+    db: AsyncSession = Depends(get_db),
 ):
     """Download trained model as a joblib file."""
     pkl_bytes = export_model_pickle(session_key)
     if pkl_bytes is None:
         raise HTTPException(status_code=404, detail="Model not found. Train a model first.")
+
+    # Track this download (non-critical — wrapped in try/except)
+    try:
+        await record_download(
+            db=db,
+            user_id=current_user.id,
+            session_id=None,
+            file_type="model",
+            original_filename=f"model_{session_key}.joblib",
+            stored_path=f"store/model_{session_key}.joblib",
+        )
+    except Exception:
+        pass
+
     return StreamingResponse(
         io.BytesIO(pkl_bytes),
         media_type="application/octet-stream",
@@ -174,7 +215,7 @@ async def download_model(
 @router.get("/inference-code/{session_key}", response_class=PlainTextResponse)
 async def inference_code(
     session_key: str,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
 ):
     """Return Python inference code snippet for the trained model."""
     code = generate_inference_code(session_key)
@@ -186,7 +227,7 @@ async def inference_code(
 @router.get("/model-card/{session_key}", response_class=PlainTextResponse)
 async def model_card(
     session_key: str,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
 ):
     """Return model card markdown for the trained model."""
     md = generate_model_card_md(session_key)

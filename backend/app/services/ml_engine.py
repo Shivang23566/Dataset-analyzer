@@ -6,6 +6,7 @@ import io
 import json
 import logging
 import os
+import subprocess
 import time
 import warnings
 import joblib
@@ -16,6 +17,76 @@ from datetime import datetime, timezone
 
 warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
+
+
+# ── GPU Detection ─────────────────────────────────────────
+def _detect_gpu() -> dict:
+    """
+    Detects available GPU and returns device config.
+    Returns dict with: has_gpu, device_name, xgb_device,
+    cuda_available, gpu_count
+    """
+    result = {
+        "has_gpu": False,
+        "device_name": "CPU",
+        "xgb_device": "cpu",
+        "cuda_available": False,
+        "gpu_count": 0,
+    }
+    # Check via PyTorch (most reliable if installed)
+    try:
+        import torch
+        if torch.cuda.is_available():
+            result["has_gpu"] = True
+            result["cuda_available"] = True
+            result["gpu_count"] = torch.cuda.device_count()
+            result["device_name"] = torch.cuda.get_device_name(0)
+            result["xgb_device"] = "cuda"
+            return result
+    except ImportError:
+        pass
+
+    # Check via XGBoost native GPU probe
+    try:
+        import xgboost as xgb
+        test_data = xgb.DMatrix([[1, 2], [3, 4]], label=[0, 1])
+        params = {"device": "cuda", "tree_method": "hist",
+                  "n_estimators": 1, "verbosity": 0}
+        xgb.train(params, test_data, num_boost_round=1)
+        result["has_gpu"] = True
+        result["xgb_device"] = "cuda"
+        result["device_name"] = "CUDA GPU (XGBoost probe)"
+        return result
+    except Exception:
+        pass
+
+    # Check via nvidia-smi (works on any system with NVIDIA drivers)
+    try:
+        out = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+            timeout=5, stderr=subprocess.DEVNULL
+        ).decode().strip()
+        if out:
+            result["has_gpu"] = True
+            result["device_name"] = out.split("\n")[0].strip()
+            result["gpu_count"] = len(out.split("\n"))
+            result["xgb_device"] = "cuda"
+            return result
+    except Exception:
+        pass
+
+    return result
+
+
+# Run once at module load time
+GPU_CONFIG = _detect_gpu()
+logger.info(
+    "GPU Detection: has_gpu=%s device=%s xgb_device=%s",
+    GPU_CONFIG["has_gpu"],
+    GPU_CONFIG["device_name"],
+    GPU_CONFIG["xgb_device"],
+)
+
 
 # ── Disk persistence ─────────────────────────────────────────
 MODEL_DIR = os.path.abspath(
@@ -433,7 +504,7 @@ def _build_model(model_id: str, hyperparams: Dict, task: str):
     if model_id == "logistic_regression":
         from sklearn.linear_model import LogisticRegression
         return LogisticRegression(C=float(hp.get("C", 1.0)), max_iter=int(hp.get("max_iter", 1000)),
-                                   solver=hp.get("solver", "lbfgs"), random_state=42)
+                                   solver=hp.get("solver", "lbfgs"), random_state=42, n_jobs=-1)
     elif model_id == "random_forest_classifier":
         from sklearn.ensemble import RandomForestClassifier
         md = hp.get("max_depth", 10)
@@ -444,20 +515,35 @@ def _build_model(model_id: str, hyperparams: Dict, task: str):
     elif model_id == "xgboost_classifier":
         try:
             from xgboost import XGBClassifier
-            return XGBClassifier(n_estimators=int(hp.get("n_estimators", 100)),
-                                  max_depth=int(hp.get("max_depth", 6)),
-                                  learning_rate=float(hp.get("learning_rate", 0.1)),
-                                  subsample=float(hp.get("subsample", 0.8)),
-                                  random_state=42, eval_metric="logloss", verbosity=0)
+            xgb_kwargs = dict(
+                n_estimators=int(hp.get("n_estimators", 100)),
+                max_depth=int(hp.get("max_depth", 6)),
+                learning_rate=float(hp.get("learning_rate", 0.1)),
+                subsample=float(hp.get("subsample", 0.8)),
+                random_state=42,
+                eval_metric="logloss",
+                verbosity=0,
+                n_jobs=-1,
+            )
+            if GPU_CONFIG["has_gpu"]:
+                xgb_kwargs["device"] = "cuda"
+                xgb_kwargs["tree_method"] = "hist"
+                logger.info("XGBClassifier using GPU: %s", GPU_CONFIG["device_name"])
+            else:
+                xgb_kwargs["tree_method"] = "hist"
+                logger.info("XGBClassifier using CPU (no GPU detected)")
+            return XGBClassifier(**xgb_kwargs)
         except ImportError:
             from sklearn.ensemble import GradientBoostingClassifier
             return GradientBoostingClassifier(n_estimators=int(hp.get("n_estimators", 100)), random_state=42)
     elif model_id == "svm_classifier":
         from sklearn.svm import SVC
+        # SVC is single-threaded by design
         return SVC(C=float(hp.get("C", 1.0)), kernel=hp.get("kernel", "rbf"),
                    gamma=hp.get("gamma", "scale"), probability=True, random_state=42)
     elif model_id == "linear_regression":
         from sklearn.linear_model import Ridge
+        # Ridge does not support n_jobs
         return Ridge(alpha=float(hp.get("alpha", 1.0)))
     elif model_id == "random_forest_regressor":
         from sklearn.ensemble import RandomForestRegressor
@@ -469,18 +555,43 @@ def _build_model(model_id: str, hyperparams: Dict, task: str):
     elif model_id == "xgboost_regressor":
         try:
             from xgboost import XGBRegressor
-            return XGBRegressor(n_estimators=int(hp.get("n_estimators", 100)),
-                                 max_depth=int(hp.get("max_depth", 6)),
-                                 learning_rate=float(hp.get("learning_rate", 0.1)),
-                                 subsample=float(hp.get("subsample", 0.8)),
-                                 random_state=42, verbosity=0)
+            xgb_kwargs = dict(
+                n_estimators=int(hp.get("n_estimators", 100)),
+                max_depth=int(hp.get("max_depth", 6)),
+                learning_rate=float(hp.get("learning_rate", 0.1)),
+                subsample=float(hp.get("subsample", 0.8)),
+                random_state=42,
+                verbosity=0,
+                n_jobs=-1,
+            )
+            if GPU_CONFIG["has_gpu"]:
+                xgb_kwargs["device"] = "cuda"
+                xgb_kwargs["tree_method"] = "hist"
+                logger.info("XGBRegressor using GPU: %s", GPU_CONFIG["device_name"])
+            else:
+                xgb_kwargs["tree_method"] = "hist"
+                logger.info("XGBRegressor using CPU (no GPU detected)")
+            return XGBRegressor(**xgb_kwargs)
         except ImportError:
             from sklearn.ensemble import GradientBoostingRegressor
             return GradientBoostingRegressor(n_estimators=int(hp.get("n_estimators", 100)), random_state=42)
     elif model_id == "svr":
         from sklearn.svm import SVR
+        # SVR is single-threaded by design
         return SVR(C=float(hp.get("C", 1.0)), kernel=hp.get("kernel", "rbf"), epsilon=float(hp.get("epsilon", 0.1)))
     elif model_id == "kmeans":
+        # Try GPU via cuML if available
+        if GPU_CONFIG["has_gpu"]:
+            try:
+                from cuml.cluster import KMeans as cuKMeans
+                logger.info("KMeans using GPU via cuML")
+                return cuKMeans(
+                    n_clusters=int(hp.get("n_clusters", 3)),
+                    max_iter=int(hp.get("max_iter", 300)),
+                    random_state=42,
+                )
+            except ImportError:
+                logger.info("cuML not installed, KMeans using CPU")
         from sklearn.cluster import KMeans
         return KMeans(n_clusters=int(hp.get("n_clusters", 3)), n_init=int(hp.get("n_init", 10)),
                       max_iter=int(hp.get("max_iter", 300)), random_state=42)
@@ -590,7 +701,8 @@ def train_model(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str, Any]:
         _save_model_to_disk(session_key, entry)
         return {"success": True, "session_key": session_key, "model_id": model_id, "task": task,
                 "training_time_seconds": round(duration, 2), "metrics": metrics,
-                "cluster_distribution": cluster_dist, "n_clusters": n_labels, "visualization_data": viz_data}
+                "cluster_distribution": cluster_dist, "n_clusters": n_labels, "visualization_data": viz_data,
+                "compute_device": GPU_CONFIG["device_name"]}
 
     # Supervised
     stratify_y = y if "classification" in task else None
@@ -706,6 +818,7 @@ def train_model(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str, Any]:
         "cv_metric": cv_scoring, "best_params": best_params, "metrics": metrics, "plots": plots,
         "feature_importance": feature_importance,
         "n_train_samples": len(X_train), "n_test_samples": len(X_test),
+        "compute_device": GPU_CONFIG["device_name"],
     }
 
 
@@ -774,3 +887,29 @@ def generate_model_card_md(session_key: str) -> str:
 ## Inference
 See the inference code snippet for instructions on loading and using this model.
 """
+
+
+# ─────────────────────────────────────────────────────────────
+# GPU STATUS INFO
+# ─────────────────────────────────────────────────────────────
+
+def _check_cuml() -> bool:
+    try:
+        import cuml  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def get_compute_info() -> dict:
+    """Returns current compute device information."""
+    return {
+        "has_gpu": GPU_CONFIG["has_gpu"],
+        "device_name": GPU_CONFIG["device_name"],
+        "gpu_count": GPU_CONFIG["gpu_count"],
+        "cuda_available": GPU_CONFIG["cuda_available"],
+        "xgb_device": GPU_CONFIG["xgb_device"],
+        "cpu_cores": os.cpu_count(),
+        "xgboost_gpu_enabled": GPU_CONFIG["has_gpu"],
+        "cuml_available": _check_cuml(),
+    }

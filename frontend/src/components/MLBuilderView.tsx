@@ -38,6 +38,8 @@ import type {
   ModelCard,
   TrainingResult,
 } from '../lib/types';
+import { extractErrorMessage, getUpgradeMessage, isLimitError, isFeatureLockedError } from '../lib/errorUtils';
+import { useToast } from '../hooks/useToast';
 
 // ── Constants ─────────────────────────────────────────────────
 const NO_TARGET = '__NO_TARGET__';
@@ -51,14 +53,14 @@ const TASK_LABELS: Record<string, string> = {
 };
 
 const TASK_COLORS: Record<string, string> = {
-  binary_classification:     '#6366F1',
-  multiclass_classification: '#38BDF8',
-  regression:                '#F59E0B',
-  clustering:                '#10B981',
-  unknown:                   '#475569',
+  binary_classification:     '#2eb8a0',
+  multiclass_classification: '#2eb8a0',
+  regression:                '#c9a84c',
+  clustering:                '#c9a84c',
+  unknown:                   '#4a4840',
 };
 
-const CLUSTER_COLORS = ['#6366F1','#10B981','#F59E0B','#F43F5E','#38BDF8','#A855F7','#06B6D4','#84CC16'];
+const CLUSTER_COLORS = ['#2eb8a0','#c9a84c','#F59E0B','#F43F5E','#38BDF8','#b8973f','#06B6D4','#84CC16'];
 
 const MODEL_ICON_MAP: Record<string, React.ReactNode> = {
   tree:           <Activity size={20} />,
@@ -300,8 +302,8 @@ function ConfusionMatrix({ matrix, labels }: { matrix: number[][]; labels: strin
                       className={`ml-cm-cell ${isDiag ? 'ml-cm-cell--diag' : ''}`}
                       style={{
                         backgroundColor: isDiag
-                          ? `rgba(99, 102, 241, ${0.15 + intensity * 0.6})`
-                          : `rgba(244, 63, 94, ${intensity * 0.45})`,
+                          ? `rgba(46, 184, 160, ${0.15 + intensity * 0.6})`
+                          : `rgba(248, 113, 113, ${intensity * 0.45})`,
                       }}
                       title={`Actual: ${labels[i]}, Predicted: ${labels[j]}: ${val}`}
                     >
@@ -376,6 +378,7 @@ function ClusterDistChart({ distribution }: { distribution: Record<string, numbe
 
 // ── Main Component ────────────────────────────────────────────
 export default function MLBuilderView({ filename }: { filename: string }) {
+  const { showToast } = useToast();
 
   // ── Column / task state ───────────────────────────────────
   const [mlColumns,     setMlColumns]     = useState<MLColumnMeta[]>([]);
@@ -421,9 +424,11 @@ export default function MLBuilderView({ filename }: { filename: string }) {
       try {
         const data = await getMLColumns(filename);
         if (!cancelled) setMlColumns(data.columns);
-      } catch (err) {
-        if (!cancelled)
-          setColsError(err instanceof Error ? err.message : 'Failed to load columns');
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const msg = extractErrorMessage(err);
+          setColsError(msg);
+        }
       } finally {
         if (!cancelled) setColsLoading(false);
       }
@@ -534,8 +539,15 @@ export default function MLBuilderView({ filename }: { filename: string }) {
         random_state: 42,
       });
       setTrainResult(result);
-    } catch (err) {
-      setTrainError(err instanceof Error ? err.message : 'Training failed');
+    } catch (err: unknown) {
+      const msg = extractErrorMessage(err);
+      if (isLimitError(msg) || isFeatureLockedError(msg)) {
+        const upgrade = getUpgradeMessage('ml_locked');
+        showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
+      } else {
+        showToast({ type: 'error', title: 'Training failed', message: msg, duration: 7000 });
+      }
+      setTrainError(msg);
     } finally {
       setTraining(false);
     }
@@ -619,9 +631,9 @@ export default function MLBuilderView({ filename }: { filename: string }) {
       <div className="ml-rec-header" style={{ gap: 18, alignItems: 'flex-start' }}>
         <div className="ml-step-num" style={{
           width: 52, height: 52, borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.08))',
-          border: '1px solid rgba(99,102,241,0.25)',
-          boxShadow: '0 0 24px rgba(99,102,241,0.15)',
+          background: 'linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.08))',
+          border: '1px solid rgba(201,168,76,0.25)',
+          boxShadow: '0 0 24px rgba(201,168,76,0.15)',
         }}>
           <Brain size={26} color="var(--accent-primary)" />
         </div>

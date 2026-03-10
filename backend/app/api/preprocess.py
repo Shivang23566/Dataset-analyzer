@@ -13,10 +13,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Any, Dict
 import pandas as pd
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.api.file_utils import load_df, UPLOAD_FOLDER
 from app.models.user import User
+from app.core.database import get_db
+from app.api.tracking import record_session, record_download, generate_session_key
 from app.services.preprocessing_engine import (
     get_dataset_health,
     get_missing_recommendations,
@@ -55,7 +58,7 @@ class OutlierRequest(BaseModel):
 @router.post("/health")
 async def dataset_health(
     request: HealthRequest,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
 ):
     """Return health dashboard data for the uploaded dataset."""
     df = load_df(request.filename, current_user.id)
@@ -69,7 +72,7 @@ async def dataset_health(
 @router.post("/recommend-imputation")
 async def recommend_imputation(
     request: HealthRequest,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
 ):
     """Return AI-recommended imputation strategies per column."""
     df = load_df(request.filename, current_user.id)
@@ -82,7 +85,7 @@ async def recommend_imputation(
 @router.post("/detect-outliers")
 async def detect_outliers_endpoint(
     request: OutlierRequest,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
 ):
     """Detect outliers in the dataset."""
     df = load_df(request.filename, current_user.id)
@@ -95,7 +98,8 @@ async def detect_outliers_endpoint(
 @router.post("/run")
 async def run_preprocessing_pipeline(
     request: PipelineRequest,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
+    db: AsyncSession = Depends(get_db),
 ):
     """Run the full preprocessing pipeline on the uploaded dataset."""
     import hashlib, time, re
@@ -117,6 +121,26 @@ async def run_preprocessing_pipeline(
 
         results["session_key"] = session_key
         results["processed_filename"] = processed_filename
+
+        # Track this session (non-critical — wrapped in try/except)
+        try:
+            summary = {
+                "filename": request.filename,
+                "steps_applied": results.get("steps_applied", []),
+                "rows_before": results.get("original_shape", {}).get("rows"),
+                "rows_after": results.get("processed_shape", {}).get("rows"),
+            }
+            await record_session(
+                db=db,
+                user_id=current_user.id,
+                session_key=generate_session_key("preprocess"),
+                session_type="preprocessing",
+                filename=request.filename,
+                result_summary=summary,
+            )
+        except Exception:
+            pass
+
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -126,7 +150,8 @@ async def run_preprocessing_pipeline(
 async def download_processed(
     session_key: str,
     format: str = "csv",
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
+    db: AsyncSession = Depends(get_db),
 ):
     """Download the processed dataset in the requested format."""
     df = get_processed_df(session_key)
@@ -135,6 +160,20 @@ async def download_processed(
     try:
         data, media_type, ext = export_dataframe(df, format)
         filename = f"processed_dataset{ext}"
+
+        # Track this download (non-critical — wrapped in try/except)
+        try:
+            await record_download(
+                db=db,
+                user_id=current_user.id,
+                session_id=None,
+                file_type="processed_csv",
+                original_filename=filename,
+                stored_path=f"processed_{session_key}{ext}",
+            )
+        except Exception:
+            pass
+
         return StreamingResponse(
             io.BytesIO(data),
             media_type=media_type,
@@ -147,7 +186,7 @@ async def download_processed(
 @router.post("/columns")
 async def get_columns(
     request: HealthRequest,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
 ):
     """Return column list with dtypes for the dataset."""
     df = load_df(request.filename, current_user.id)

@@ -212,3 +212,69 @@ export type TrainingResult = {
   visualization_data?: Array<{ x: number; y: number; cluster: number }>;
 };
 
+// ── Dashboard Types ──────────────────────────────────────────
+
+export interface DashboardSummary {
+  user: {
+    id: number;
+    email: string;
+    full_name: string | null;
+    member_since: string | null;
+  };
+  stats: {
+    datasets: number;
+    sessions: number;
+    downloads: number;
+  };
+  subscription: {
+    plan: string;
+    status: string;
+    expires_at: string | null;
+    cancel_at_period_end: boolean;
+  };
+}
+
+export interface DashboardDataset {
+  id: number;
+  original_filename: string;
+  saved_filename: string;
+  file_size_bytes: number | null;
+  row_count: number | null;
+  col_count: number | null;
+  uploaded_at: string;
+  last_accessed_at: string | null;
+}
+
+export interface DashboardSession {
+  id: number;
+  session_key: string;
+  session_type: string;
+  status: string;
+  result_summary: string | null;
+  created_at: string;
+  completed_at: string | null;
+  dataset_id: number | null;
+}
+
+export interface DashboardDownload {
+  id: number;
+  file_type: string;
+  original_filename: string;
+  downloaded_at: string;
+  session_id: number | null;
+}
+
+export interface PaymentStatus {
+  plan: string;
+  status: string;
+  expires_at: string | null;
+  days_remaining: number;
+  amount: string;
+  razorpay_key_id: string;
+  subscription: {
+    id: number | null;
+    razorpay_subscription_id: string | null;
+    started_at: string | null;
+  } | null;
+}
+
