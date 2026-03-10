@@ -16,6 +16,7 @@ import type {
   DashboardDownload,
   PaymentStatus,
 } from '../lib/types';
+import { extractErrorMessage } from '../lib/errorUtils';
 
 // ── Type configs (same as mockup) ──────────────
 const typeConfig: Record<string, {
@@ -217,7 +218,7 @@ export default function DashboardPage() {
         setDownloads(downloadsRes.downloads);
         setPayment(paymentRes);
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Failed to load dashboard';
+        const msg = extractErrorMessage(e);
         setError(msg);
         if (msg.includes('Not authenticated')) {
           navigate('/login');

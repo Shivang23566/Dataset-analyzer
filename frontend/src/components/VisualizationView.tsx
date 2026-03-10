@@ -32,6 +32,7 @@ import {
 } from 'recharts';
 import { getColumns, generateVisualization } from '../lib/api';
 import type { DatasetColumn } from '../lib/types';
+import { extractErrorMessage } from '../lib/errorUtils';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -214,10 +215,10 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
           console.warn('[VisualizationView] No valid Y column found for chart type:', chartType);
           setYColumn('');
         }
-      } catch (err) {
+      } catch (err: unknown) {
         if (!cancelled) {
           console.error('[VisualizationView] Error loading columns:', err);
-          setError(err instanceof Error ? err.message : 'Failed to load columns');
+          setError(extractErrorMessage(err));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -333,8 +334,8 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
         console.error('[VisualizationView] Generation failed:', errorMsg);
         setError(errorMsg);
       }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to generate chart';
+    } catch (err: unknown) {
+      const errorMsg = extractErrorMessage(err);
       console.error('[VisualizationView] Generation error:', err);
       setError(errorMsg);
     } finally {

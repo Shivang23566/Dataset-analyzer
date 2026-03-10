@@ -69,3 +69,7 @@ export const isLimitError = (message: string): boolean =>
 /** Returns true when the error message looks like a feature-locked error */
 export const isFeatureLockedError = (message: string): boolean =>
   /pro (feature|required|only)|not available on free|locked/i.test(message);
+
+/** Returns true when the error is specifically a pro_required gate */
+export const isProRequiredError = (message: string): boolean =>
+  /pro_required|requires a Pro subscription|Pro Feature/i.test(message);

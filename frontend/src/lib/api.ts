@@ -60,9 +60,16 @@ async function request<T>(path: string, init?: RequestInit, auth = false): Promi
     let message = text || `Request failed: ${response.status}`;
 
     try {
-      const parsed = JSON.parse(text) as { detail?: string };
+      const parsed = JSON.parse(text) as { detail?: string | Array<{ msg: string }> | { message?: string; error?: string } };
       if (parsed?.detail) {
-        message = parsed.detail;
+        if (Array.isArray(parsed.detail)) {
+          message = parsed.detail.map((d) => d.msg).join(', ');
+        } else if (typeof parsed.detail === 'string') {
+          message = parsed.detail;
+        } else if (typeof parsed.detail === 'object' && parsed.detail !== null) {
+          const det = parsed.detail as { message?: string; error?: string };
+          message = det.message || det.error || JSON.stringify(parsed.detail);
+        }
       }
     } catch {
       // Non-JSON error payloads fallback to raw text.

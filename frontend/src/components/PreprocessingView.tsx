@@ -35,8 +35,9 @@ import type {
   PreprocessColumnMeta,
   PipelineRunResponse,
 } from '../lib/types';
-import { extractErrorMessage, getUpgradeMessage, isLimitError, isFeatureLockedError } from '../lib/errorUtils';
+import { extractErrorMessage, getUpgradeMessage, isLimitError, isFeatureLockedError, isProRequiredError } from '../lib/errorUtils';
 import { useToast } from '../hooks/useToast';
+import { ProLockedOverlay } from './ProLockedOverlay';
 
 // ── Step config types ─────────────────────────────────────────
 type DupConfig = {
@@ -222,6 +223,9 @@ function StepCard({
 export default function PreprocessingView({ filename, onProcessed }: { filename: string; onProcessed?: (filename: string) => void }) {
   const { showToast } = useToast();
 
+  // ── Pro-locked state ───────────────────────────────────────
+  const [isProLocked, setIsProLocked] = useState(false);
+
   // ── Phase 1 state ─────────────────────────────────────────
   const [health,        setHealth]        = useState<DatasetHealthResponse | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
@@ -282,7 +286,11 @@ export default function PreprocessingView({ filename, onProcessed }: { filename:
       } catch (err: unknown) {
         if (!cancelled) {
           const msg = extractErrorMessage(err);
-          if (isLimitError(msg) || isFeatureLockedError(msg)) {
+          if (isProRequiredError(msg) || isFeatureLockedError(msg)) {
+            setIsProLocked(true);
+            const upgrade = getUpgradeMessage('preprocessing_locked');
+            showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
+          } else if (isLimitError(msg)) {
             const upgrade = getUpgradeMessage('preprocessing_locked');
             showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
           }
@@ -460,6 +468,14 @@ export default function PreprocessingView({ filename, onProcessed }: { filename:
   };
 
   // ── Render ────────────────────────────────────────────────
+  if (isProLocked) {
+    return (
+      <section className="pp-dk-panel">
+        <ProLockedOverlay feature="preprocessing" />
+      </section>
+    );
+  }
+
   return (
     <section className="pp-dk-panel">
 

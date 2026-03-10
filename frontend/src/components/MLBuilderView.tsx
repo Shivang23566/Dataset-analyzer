@@ -38,8 +38,9 @@ import type {
   ModelCard,
   TrainingResult,
 } from '../lib/types';
-import { extractErrorMessage, getUpgradeMessage, isLimitError, isFeatureLockedError } from '../lib/errorUtils';
+import { extractErrorMessage, getUpgradeMessage, isLimitError, isFeatureLockedError, isProRequiredError } from '../lib/errorUtils';
 import { useToast } from '../hooks/useToast';
+import { ProLockedOverlay } from './ProLockedOverlay';
 
 // ── Constants ─────────────────────────────────────────────────
 const NO_TARGET = '__NO_TARGET__';
@@ -380,6 +381,9 @@ function ClusterDistChart({ distribution }: { distribution: Record<string, numbe
 export default function MLBuilderView({ filename }: { filename: string }) {
   const { showToast } = useToast();
 
+  // ── Pro-locked state ───────────────────────────────────────
+  const [isProLocked, setIsProLocked] = useState(false);
+
   // ── Column / task state ───────────────────────────────────
   const [mlColumns,     setMlColumns]     = useState<MLColumnMeta[]>([]);
   const [colsLoading,   setColsLoading]   = useState(false);
@@ -427,6 +431,11 @@ export default function MLBuilderView({ filename }: { filename: string }) {
       } catch (err: unknown) {
         if (!cancelled) {
           const msg = extractErrorMessage(err);
+          if (isProRequiredError(msg) || isFeatureLockedError(msg)) {
+            setIsProLocked(true);
+            const upgrade = getUpgradeMessage('ml_locked');
+            showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
+          }
           setColsError(msg);
         }
       } finally {
@@ -624,6 +633,14 @@ export default function MLBuilderView({ filename }: { filename: string }) {
   const isClustering     = currentTask === 'clustering';
 
   // ── Render ────────────────────────────────────────────────
+  if (isProLocked) {
+    return (
+      <section className="ml-panel">
+        <ProLockedOverlay feature="ml" />
+      </section>
+    );
+  }
+
   return (
     <section className="ml-panel">
 

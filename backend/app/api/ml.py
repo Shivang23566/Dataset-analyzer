@@ -71,7 +71,7 @@ class TrainRequest(BaseModel):
 @router.post("/columns")
 async def get_columns(
     request: FileRequest,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
 ):
     """Return column metadata for target selection."""
     df = load_df(request.filename, current_user.id)
@@ -87,7 +87,7 @@ async def get_columns(
 @router.post("/detect-task")
 async def detect_task(
     request: TaskDetectRequest,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
 ):
     """Auto-detect ML task type from the target column."""
     df = load_df(request.filename, current_user.id)
@@ -100,7 +100,7 @@ async def detect_task(
 @router.post("/recommend")
 async def recommend(
     request: RecommendRequest,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
 ):
     """Get AI model recommendation for the dataset."""
     df = load_df(request.filename, current_user.id)
@@ -119,7 +119,7 @@ async def recommend(
 @router.post("/cards")
 async def model_cards(
     request: CardsRequest,
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.require_pro),
 ):
     """Return model cards for the given task type."""
     try:

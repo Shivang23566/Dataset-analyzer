@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { analyzeDataset } from '../lib/api';
 import type { EdaResponse } from '../lib/types';
+import { extractErrorMessage } from '../lib/errorUtils';
 
 type EDAViewProps = { filename: string };
 
@@ -71,8 +72,8 @@ export default function EDAView({ filename }: EDAViewProps) {
       setResult(data);
       setRunCount((c) => c + 1);
       setScanKey((k) => k + 1);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'EDA failed');
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }

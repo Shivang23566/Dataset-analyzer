@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { extractErrorMessage } from '../lib/errorUtils';
 
 type AuthFormProps = {
   title: string;
@@ -26,9 +27,8 @@ export default function AuthForm({
     setLoading(true);
     try {
       await onSubmit(email, password);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Authentication failed';
-      setError(message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
