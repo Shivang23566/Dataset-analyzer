@@ -278,3 +278,32 @@ export interface PaymentStatus {
   } | null;
 }
 
+// ── Profile Types ────────────────────────────────────────────
+
+export interface ProfileData {
+  id: number;
+  email: string;
+  full_name: string | null;
+  created_at: string;
+  last_login_at: string | null;
+}
+
+// ── Subscription Types ───────────────────────────────────────
+
+export interface SubscriptionData {
+  plan: 'free' | 'pro';
+  status: 'active' | 'inactive' | 'expired' | 'cancelled';
+  expires_at: string | null;
+  razorpay_subscription_id: string | null;
+  started_at: string | null;
+}
+
+// ── Coupon Types ─────────────────────────────────────────────
+
+export interface CouponResponse {
+  success: boolean;
+  message: string;
+  days_granted?: number;
+  expires_at?: string;
+}
+

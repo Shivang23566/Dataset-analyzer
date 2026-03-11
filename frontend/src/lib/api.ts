@@ -1,6 +1,7 @@
 import { clearAuth, getToken, saveAuth } from './authStore';
 import type {
   ColumnResponse,
+  CouponResponse,
   DashboardDataset,
   DashboardDownload,
   DashboardSession,
@@ -14,7 +15,9 @@ import type {
   PaymentStatus,
   PipelineRunResponse,
   PreprocessColumnsResponse,
+  ProfileData,
   SignupPayload,
+  SubscriptionData,
   TaskDetectResponse,
   TokenResponse,
   TrainingResult,
@@ -56,6 +59,13 @@ async function request<T>(path: string, init?: RequestInit, auth = false): Promi
   });
 
   if (!response.ok) {
+    // Auto-logout on 401 (token expired or invalid)
+    if (response.status === 401 && auth) {
+      clearAuth();
+      window.location.href = '/login';
+      throw new Error('Session expired. Please login again.');
+    }
+
     const text = await response.text();
     let message = text || `Request failed: ${response.status}`;
 
@@ -335,5 +345,80 @@ export async function deleteDataset(datasetId: number) {
 export async function getPaymentStatus() {
   return request<PaymentStatus>('/payments/status', {
     method: 'GET',
+  }, true);
+}
+
+// ── Profile API ───────────────────────────────────────────
+
+export async function fetchProfile() {
+  return request<ProfileData>('/dashboard/profile', {
+    method: 'GET',
+  }, true);
+}
+
+export async function updateProfile(data: { full_name?: string; email?: string }) {
+  return request<ProfileData>('/dashboard/profile', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }, true);
+}
+
+export async function updatePassword(data: { current_password: string; new_password: string }) {
+  return request<{ message: string }>('/dashboard/password', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }, true);
+}
+
+// ── Subscription API ──────────────────────────────────────
+
+export async function fetchSubscription() {
+  return request<SubscriptionData>('/dashboard/subscription', {
+    method: 'GET',
+  }, true);
+}
+
+// ── Coupon API ────────────────────────────────────────────
+
+export async function applyCoupon(code: string) {
+  return request<CouponResponse>('/coupons/apply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  }, true);
+}
+
+export async function getCouponStatus() {
+  return request<{ active_coupon: unknown; history: unknown[] }>('/coupons/status', {
+    method: 'GET',
+  }, true);
+}
+
+// ── Payments API ──────────────────────────────────────────
+
+export async function createPaymentOrder() {
+  return request<{
+    order_id: string;
+    amount: number;
+    currency: string;
+    razorpay_key_id: string;
+    user_email: string;
+    user_name: string | null;
+  }>('/payments/create-order', {
+    method: 'POST',
+  }, true);
+}
+
+export async function verifyPayment(data: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}) {
+  return request<{ success: boolean; message: string }>('/payments/verify-payment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
   }, true);
 }

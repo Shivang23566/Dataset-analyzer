@@ -18,16 +18,16 @@ import PreprocessingView from '../components/PreprocessingView';
 import MLBuilderView from '../components/MLBuilderView';
 import { ToastContainer } from '../components/ToastContainer';
 import { getLoggedInEmail } from '../lib/authStore';
-import { logout } from '../lib/api';
+import { logout, getPaymentStatus } from '../lib/api';
 
 type Tab = 'upload' | 'eda' | 'visualization' | 'preprocess' | 'ml';
 
 const TABS = [
-  { id: 'upload' as Tab, label: 'Upload', icon: Upload },
-  { id: 'eda' as Tab, label: 'EDA', icon: BarChart3 },
-  { id: 'visualization' as Tab, label: 'Visualize', icon: Sparkles },
-  { id: 'preprocess' as Tab, label: 'Preprocess', icon: Settings },
-  { id: 'ml' as Tab, label: 'ML Builder', icon: Brain },
+  { id: 'upload' as Tab, label: 'Upload', icon: Upload, proOnly: false },
+  { id: 'eda' as Tab, label: 'EDA', icon: BarChart3, proOnly: false },
+  { id: 'visualization' as Tab, label: 'Visualize', icon: Sparkles, proOnly: false },
+  { id: 'preprocess' as Tab, label: 'Preprocess', icon: Settings, proOnly: true },
+  { id: 'ml' as Tab, label: 'ML Builder', icon: Brain, proOnly: true },
 ];
 
 function getInitials(email: string): string {
@@ -41,8 +41,16 @@ export default function WorkspacePage() {
   const [activeTab, setActiveTab] = useState<Tab>('upload');
   const [fileName, setFileName] = useState('');
   const [processedFileName, setProcessedFileName] = useState('');
+  const [isPro, setIsPro] = useState(true); // default true to avoid flash
 
   const userEmail = getLoggedInEmail() || '';
+
+  // Fetch subscription status
+  useEffect(() => {
+    getPaymentStatus()
+      .then((res) => setIsPro(res.plan === 'pro'))
+      .catch(() => setIsPro(false));
+  }, []);
 
   // Auto-load file from dashboard "Open" button
   useEffect(() => {
@@ -184,6 +192,19 @@ export default function WorkspacePage() {
         .ws-tab-icon {
           width: 18px;
           height: 18px;
+        }
+
+        .ws-pro-badge {
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          color: #c9a84c;
+          background: rgba(201,168,76,0.1);
+          border: 1px solid rgba(201,168,76,0.22);
+          border-radius: 4px;
+          padding: 1px 5px;
+          line-height: 1.2;
+          margin-left: 2px;
         }
 
         /* ─── Nav Right ─── */
@@ -410,6 +431,7 @@ export default function WorkspacePage() {
                 >
                   <Icon className="ws-tab-icon" size={18} />
                   {tab.label}
+                  {tab.proOnly && !isPro && <span className="ws-pro-badge">PRO</span>}
                 </button>
               );
             })}

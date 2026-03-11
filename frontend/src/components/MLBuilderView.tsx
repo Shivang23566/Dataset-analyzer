@@ -381,6 +381,15 @@ function ClusterDistChart({ distribution }: { distribution: Record<string, numbe
 export default function MLBuilderView({ filename }: { filename: string }) {
   const { showToast } = useToast();
 
+  const showUpgradeToast = (key: string) => {
+    const upgrade = getUpgradeMessage(key);
+    showToast({
+      type: 'upgrade', title: upgrade.title, message: upgrade.message,
+      ctaText: upgrade.cta, duration: 0,
+      onCtaClick: () => { window.location.href = '/dashboard?tab=billing'; },
+    });
+  };
+
   // ── Pro-locked state ───────────────────────────────────────
   const [isProLocked, setIsProLocked] = useState(false);
 
@@ -433,8 +442,7 @@ export default function MLBuilderView({ filename }: { filename: string }) {
           const msg = extractErrorMessage(err);
           if (isProRequiredError(msg) || isFeatureLockedError(msg)) {
             setIsProLocked(true);
-            const upgrade = getUpgradeMessage('ml_locked');
-            showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
+            showUpgradeToast('ml_locked');
           }
           setColsError(msg);
         }
@@ -551,8 +559,7 @@ export default function MLBuilderView({ filename }: { filename: string }) {
     } catch (err: unknown) {
       const msg = extractErrorMessage(err);
       if (isLimitError(msg) || isFeatureLockedError(msg)) {
-        const upgrade = getUpgradeMessage('ml_locked');
-        showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
+        showUpgradeToast('ml_locked');
       } else {
         showToast({ type: 'error', title: 'Training failed', message: msg, duration: 7000 });
       }
@@ -570,7 +577,13 @@ export default function MLBuilderView({ filename }: { filename: string }) {
       const url     = getModelDownloadUrl(trainResult.session_key);
       const headers = getDownloadHeaders();
       const resp    = await fetch(url, { headers });
-      if (!resp.ok) throw new Error('Model download failed');
+      if (!resp.ok) {
+        if (resp.status === 403) {
+          showUpgradeToast('download_locked');
+          return;
+        }
+        throw new Error('Model download failed');
+      }
       const blob    = await resp.blob();
       const a       = document.createElement('a');
       a.href        = URL.createObjectURL(blob);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   getDashboardSummary,
   getDashboardDatasets,
@@ -17,6 +17,9 @@ import type {
   PaymentStatus,
 } from '../lib/types';
 import { extractErrorMessage } from '../lib/errorUtils';
+import AccountSection from '../components/AccountSection';
+import BillingSection from '../components/BillingSection';
+import { ToastContainer } from '../components/ToastContainer';
 
 // ── Type configs (same as mockup) ──────────────
 const typeConfig: Record<string, {
@@ -187,7 +190,8 @@ function AnalysisBadge({ done, label }: { done: boolean; label: string }) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState('overview');
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -275,6 +279,8 @@ export default function DashboardPage() {
     { id: 'datasets', label: 'Datasets' },
     { id: 'activity', label: 'Activity' },
     { id: 'downloads', label: 'Downloads' },
+    { id: 'account', label: 'Account' },
+    { id: 'billing', label: 'Billing' },
   ];
 
   // Build dataset analysis map from sessions
@@ -511,7 +517,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <button
-              onClick={() => navigate('/upgrade')}
+              onClick={() => setTab('billing')}
               style={{
                 display: "flex", alignItems: "center", gap: 7,
                 background: "rgba(46,184,160,0.07)",
@@ -567,7 +573,7 @@ export default function DashboardPage() {
                   }).toUpperCase()}
                 </div>
                 <h1 style={{
-                  fontFamily: "'Inter', sans-serif",
+                  fontFamily: "'Eagle Lake', cursive",
                   fontSize: 42, fontWeight: 700,
                   color: "#d4cfc8", lineHeight: 1.1, letterSpacing: "-1px",
                 }}>
@@ -577,8 +583,19 @@ export default function DashboardPage() {
                 <p style={{
                   fontSize: 13, color: "#4a4840", marginTop: 10,
                   fontStyle: "italic", fontFamily: "'Inter', sans-serif",
+                  display: "flex", alignItems: "center", gap: 10,
                 }}>
                   {memberSince && `Member since ${memberSince} · `}{userEmail}
+                  <span style={{
+                    fontStyle: "normal",
+                    fontSize: 9, fontWeight: 700, letterSpacing: "0.12em",
+                    padding: "2px 8px", borderRadius: 4, lineHeight: 1.3,
+                    background: isPro ? "rgba(201,168,76,0.1)" : "rgba(255,255,255,0.04)",
+                    color: isPro ? "#c9a84c" : "#5a5648",
+                    border: `1px solid ${isPro ? "rgba(201,168,76,0.22)" : "rgba(255,255,255,0.06)"}`,
+                  }}>
+                    {isPro ? "PRO" : "FREE"}
+                  </span>
                 </p>
               </div>
               <button className="db-btn-primary" onClick={() => navigate('/workspace')}
@@ -1125,7 +1142,13 @@ export default function DashboardPage() {
             </SectionCard>
           </div>
         )}
+        {/* ═══════════ ACCOUNT TAB ═══════════ */}
+        {tab === 'account' && <AccountSection />}
+
+        {/* ═══════════ BILLING TAB ═══════════ */}
+        {tab === 'billing' && <BillingSection />}
       </main>
+      <ToastContainer />
     </div>
   );
 }

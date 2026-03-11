@@ -223,6 +223,15 @@ function StepCard({
 export default function PreprocessingView({ filename, onProcessed }: { filename: string; onProcessed?: (filename: string) => void }) {
   const { showToast } = useToast();
 
+  const showUpgradeToast = (key: string) => {
+    const upgrade = getUpgradeMessage(key);
+    showToast({
+      type: 'upgrade', title: upgrade.title, message: upgrade.message,
+      ctaText: upgrade.cta, duration: 0,
+      onCtaClick: () => { window.location.href = '/dashboard?tab=billing'; },
+    });
+  };
+
   // ── Pro-locked state ───────────────────────────────────────
   const [isProLocked, setIsProLocked] = useState(false);
 
@@ -288,11 +297,9 @@ export default function PreprocessingView({ filename, onProcessed }: { filename:
           const msg = extractErrorMessage(err);
           if (isProRequiredError(msg) || isFeatureLockedError(msg)) {
             setIsProLocked(true);
-            const upgrade = getUpgradeMessage('preprocessing_locked');
-            showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
+            showUpgradeToast('preprocessing_locked');
           } else if (isLimitError(msg)) {
-            const upgrade = getUpgradeMessage('preprocessing_locked');
-            showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
+            showUpgradeToast('preprocessing_locked');
           }
           setHealthError(msg);
         }
@@ -405,8 +412,7 @@ export default function PreprocessingView({ filename, onProcessed }: { filename:
     } catch (err: unknown) {
       const msg = extractErrorMessage(err);
       if (isLimitError(msg) || isFeatureLockedError(msg)) {
-        const upgrade = getUpgradeMessage('preprocessing_locked');
-        showToast({ type: 'upgrade', title: upgrade.title, message: upgrade.message, ctaText: upgrade.cta, duration: 0 });
+        showUpgradeToast('preprocessing_locked');
       } else {
         showToast({ type: 'error', title: 'Pipeline failed', message: msg, duration: 7000 });
       }
@@ -423,7 +429,13 @@ export default function PreprocessingView({ filename, onProcessed }: { filename:
       const url     = getDownloadUrl(pipelineResult.session_key, format);
       const headers = getDownloadHeaders();
       const resp    = await fetch(url, { headers });
-      if (!resp.ok) throw new Error('Download request failed');
+      if (!resp.ok) {
+        if (resp.status === 403) {
+          showUpgradeToast('download_locked');
+          return;
+        }
+        throw new Error('Download request failed');
+      }
       const blob = await resp.blob();
       const a    = document.createElement('a');
       a.href     = URL.createObjectURL(blob);
