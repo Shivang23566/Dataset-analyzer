@@ -25,7 +25,7 @@ import type {
   VisualizationResponse,
 } from './types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? '';
 
 // Simple response cache to avoid redundant fetches on tab switches (TTL: 30s)
 const _cache = new Map<string, { data: unknown; ts: number }>();
@@ -216,7 +216,6 @@ export async function runPipeline(filename: string, config: Record<string, unkno
 }
 
 export function getDownloadUrl(sessionKey: string, format: string): string {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
   return `${API_BASE_URL}/api/preprocess/download/${sessionKey}?format=${format}`;
 }
 
@@ -278,12 +277,10 @@ export async function trainModel(params: {
 }
 
 export function getModelDownloadUrl(sessionKey: string): string {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
   return `${API_BASE_URL}/api/ml/download/${sessionKey}`;
 }
 
 export async function getInferenceCode(sessionKey: string): Promise<string> {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
   const token = getToken();
   const resp = await fetch(`${API_BASE_URL}/api/ml/inference-code/${sessionKey}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -293,7 +290,6 @@ export async function getInferenceCode(sessionKey: string): Promise<string> {
 }
 
 export async function getModelCard(sessionKey: string): Promise<string> {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
   const token = getToken();
   const resp = await fetch(`${API_BASE_URL}/api/ml/model-card/${sessionKey}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
