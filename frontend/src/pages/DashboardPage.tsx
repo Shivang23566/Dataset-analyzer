@@ -499,6 +499,22 @@ export default function DashboardPage() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {summary?.user?.is_superuser && (
+            <button
+              onClick={() => navigate('/admin')}
+              style={{
+                display: "flex", alignItems: "center", gap: 7,
+                background: "rgba(155,135,194,0.07)",
+                border: "1px solid rgba(155,135,194,0.18)",
+                borderRadius: 24, padding: "5px 13px",
+                cursor: "pointer",
+                fontSize: 10, letterSpacing: "0.14em",
+                fontFamily: "'Inter', sans-serif",
+                color: "#9b87c2",
+              }}>
+              ⚙ ADMIN
+            </button>
+          )}
           {isPro ? (
             <div style={{
               display: "flex", alignItems: "center", gap: 7,

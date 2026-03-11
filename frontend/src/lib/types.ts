@@ -219,6 +219,7 @@ export interface DashboardSummary {
     id: number;
     email: string;
     full_name: string | null;
+    is_superuser: boolean;
     member_since: string | null;
   };
   stats: {

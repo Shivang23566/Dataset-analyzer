@@ -44,8 +44,16 @@ async def lifespan(app):
     )
     yield
 
+# ── Production detection ─────────────────────────────────────
+IS_PRODUCTION = os.getenv("RENDER") is not None or os.getenv("ENVIRONMENT") == "production"
+
 # ── Rate limiter ─────────────────────────────────────────────
-app = FastAPI(lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
+app = FastAPI(
+    lifespan=lifespan,
+    docs_url=None if IS_PRODUCTION else "/api/docs",
+    redoc_url=None if IS_PRODUCTION else "/api/redoc",
+    openapi_url=None if IS_PRODUCTION else "/api/openapi.json",
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 

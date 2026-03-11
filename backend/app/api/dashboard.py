@@ -102,6 +102,7 @@ async def get_dashboard_summary(
             "id": current_user.id,
             "email": current_user.email,
             "full_name": current_user.full_name,
+            "is_superuser": current_user.is_superuser,
             "member_since": current_user.created_at.isoformat()
             if current_user.created_at else None,
         },

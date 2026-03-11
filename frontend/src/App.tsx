@@ -7,6 +7,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignupPage = lazy(() => import('./pages/SignupPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const WorkspacePage = lazy(() => import('./pages/WorkspacePage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   if (!hasToken()) {
@@ -35,6 +36,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <WorkspacePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
             </ProtectedRoute>
           }
         />
