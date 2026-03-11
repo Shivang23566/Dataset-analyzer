@@ -1,24 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const getToken = () => localStorage.getItem('token');
-
-async function adminFetch<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`,
-      ...options.headers,
-    },
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail));
-  }
-  return response.json();
-}
+import {
+  getCurrentUser,
+  adminListCoupons,
+  adminCreateCoupon,
+  adminDeleteCoupon,
+  adminListUsers,
+  adminUpdateUserPlan,
+} from '../lib/api';
 
 interface Coupon {
   id: number;
@@ -67,8 +56,8 @@ export default function AdminPage() {
   const loadCoupons = useCallback(async () => {
     setCouponsLoading(true);
     try {
-      const data = await adminFetch<{ coupons: Coupon[] }>('/admin/coupons/list');
-      setCoupons(data.coupons || []);
+      const data = await adminListCoupons();
+      setCoupons((data.coupons || []) as Coupon[]);
     } catch {
       showToast('error', 'Failed to load coupons');
     } finally {
@@ -79,8 +68,8 @@ export default function AdminPage() {
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
     try {
-      const data = await adminFetch<{ users: AdminUser[] }>('/admin/users/list');
-      setUsers(data.users || []);
+      const data = await adminListUsers();
+      setUsers((data.users || []) as AdminUser[]);
     } catch {
       showToast('error', 'Failed to load users');
     } finally {
@@ -92,7 +81,7 @@ export default function AdminPage() {
   useEffect(() => {
     const checkAdmin = async () => {
       try {
-        const user = await adminFetch<{ is_superuser?: boolean }>('/auth/users/me');
+        const user = await getCurrentUser();
         if (!user.is_superuser) {
           navigate('/dashboard');
           return;
@@ -115,10 +104,7 @@ export default function AdminPage() {
       return;
     }
     try {
-      await adminFetch('/admin/coupons/create', {
-        method: 'POST',
-        body: JSON.stringify(newCoupon),
-      });
+      await adminCreateCoupon(newCoupon);
       setNewCoupon({ code: '', duration_days: 7, max_uses: 10 });
       showToast('success', 'Coupon created successfully');
       loadCoupons();
@@ -130,7 +116,7 @@ export default function AdminPage() {
   const deleteCoupon = async (couponId: number) => {
     if (!confirm('Delete this coupon? This cannot be undone.')) return;
     try {
-      await adminFetch(`/admin/coupons/${couponId}`, { method: 'DELETE' });
+      await adminDeleteCoupon(couponId);
       showToast('success', 'Coupon deleted');
       loadCoupons();
     } catch (e: unknown) {
@@ -140,10 +126,7 @@ export default function AdminPage() {
 
   const updateUserPlan = async (userId: number, plan: 'free' | 'pro') => {
     try {
-      await adminFetch(`/admin/users/${userId}/plan`, {
-        method: 'PUT',
-        body: JSON.stringify({ plan, duration_days: 30 }),
-      });
+      await adminUpdateUserPlan(userId, plan, 30);
       showToast('success', `User plan updated to ${plan}`);
       loadUsers();
     } catch (e: unknown) {

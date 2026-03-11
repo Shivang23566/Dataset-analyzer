@@ -134,7 +134,7 @@ export async function backendLogin(payload: LoginPayload) {
 }
 
 export async function getCurrentUser() {
-  return request('/auth/users/me', { method: 'GET' }, true);
+  return request<{ id: number; email: string; is_superuser: boolean; [key: string]: unknown }>('/auth/users/me', { method: 'GET' }, true);
 }
 
 export async function uploadDataset(file: File) {
@@ -433,5 +433,49 @@ export async function verifyPayment(data: {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
+  }, true);
+}
+
+// ── Admin API ─────────────────────────────────────────────
+
+export async function adminListCoupons() {
+  return request<{ coupons: unknown[] }>('/admin/coupons/list', {
+    method: 'GET',
+  }, true);
+}
+
+export async function adminCreateCoupon(data: {
+  code: string;
+  duration_days: number;
+  max_uses: number;
+}) {
+  return request<{ status: string; coupon: unknown }>('/admin/coupons/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }, true);
+}
+
+export async function adminDeleteCoupon(couponId: number) {
+  return request<{ status: string }>(`/admin/coupons/${couponId}`, {
+    method: 'DELETE',
+  }, true);
+}
+
+export async function adminListUsers() {
+  return request<{ users: unknown[] }>('/admin/users/list', {
+    method: 'GET',
+  }, true);
+}
+
+export async function adminUpdateUserPlan(
+  userId: number,
+  plan: 'free' | 'pro',
+  durationDays: number = 30,
+) {
+  return request<{ status: string }>(`/admin/users/${userId}/plan`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plan, duration_days: durationDays }),
   }, true);
 }
