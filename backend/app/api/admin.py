@@ -43,12 +43,12 @@ class CreateCouponRequest(BaseModel):
     @field_validator("duration_days")
     @classmethod
     def validate_duration(cls, v: int) -> int:
-        allowed = [10, 30, -1]
-        if v not in allowed:
+        if v != -1 and v < 1:
             raise ValueError(
-                f"duration_days must be one of: {allowed} "
-                f"(10=10 days, 30=30 days, -1=lifetime)"
+                "duration_days must be a positive integer or -1 for lifetime"
             )
+        if v > 365:
+            raise ValueError("duration_days cannot exceed 365")
         return v
 
     @field_validator("max_uses")
