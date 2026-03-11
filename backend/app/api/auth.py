@@ -30,7 +30,8 @@ async def login_access_token(
     """
     OAuth2 compatible token login, get an access token for future requests
     """
-    result = await db.execute(select(User).filter(User.email == form_data.username))
+    normalized_email = form_data.username.lower().strip()
+    result = await db.execute(select(User).filter(User.email == normalized_email))
     user = result.scalars().first()
 
     if not user or not security.verify_password(form_data.password, user.hashed_password):
@@ -58,16 +59,18 @@ async def signup(
     """
     Create new user without the need to be logged in
     """
-    result = await db.execute(select(User).filter(User.email == user_in.email))
+    normalized_email = user_in.email.lower().strip()
+
+    result = await db.execute(select(User).filter(User.email == normalized_email))
     user = result.scalars().first()
     if user:
         raise HTTPException(
             status_code=400,
-            detail="The user with this username already exists in the system.",
+            detail="An account with this email already exists. Please login instead.",
         )
 
     user = User(
-        email=user_in.email,
+        email=normalized_email,
         hashed_password=security.get_password_hash(user_in.password),
         is_active=True,
         is_superuser=False,

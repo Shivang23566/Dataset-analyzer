@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { extractErrorMessage } from '../lib/errorUtils';
 
 type AuthFormProps = {
@@ -20,6 +21,7 @@ export default function AuthForm({
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -60,7 +62,21 @@ export default function AuthForm({
             required
           />
         </label>
-        {error ? <div className="error-banner">{error}</div> : null}
+        {error ? (
+          <div className="error-banner">
+            {error}
+            {error.includes('already exists') && (
+              <button
+                type="button"
+                className="btn-link"
+                onClick={() => navigate('/login')}
+                style={{ marginLeft: 8 }}
+              >
+                Login instead →
+              </button>
+            )}
+          </div>
+        ) : null}
         <button type="submit" className="btn btn-primary" disabled={loading}>
           {loading ? loadingText : submitText}
         </button>
