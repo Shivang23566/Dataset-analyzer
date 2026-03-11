@@ -25,7 +25,24 @@ import type {
   VisualizationResponse,
 } from './types';
 
-const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? '';
+// Runtime production detection (not build-time, so it always works)
+const _isProduction = typeof window !== 'undefined'
+  && !window.location.hostname.includes('localhost')
+  && !window.location.hostname.includes('127.0.0.1');
+
+// Production: '' (same origin / relative URLs)
+// Development: env var or http://localhost:8000
+const API_BASE_URL: string = _isProduction
+  ? ''
+  : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000');
+
+if (typeof window !== 'undefined') {
+  console.log('[API Config]', {
+    hostname: window.location.hostname,
+    isProduction: _isProduction,
+    API_BASE_URL: API_BASE_URL || '(empty - same origin)',
+  });
+}
 
 // Simple response cache to avoid redundant fetches on tab switches (TTL: 30s)
 const _cache = new Map<string, { data: unknown; ts: number }>();
