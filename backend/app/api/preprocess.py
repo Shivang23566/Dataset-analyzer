@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.api.file_utils import load_df, UPLOAD_FOLDER
+from app.core.config import settings
 from app.models.user import User
 from app.core.database import get_db
 from app.api.tracking import record_session, record_download, generate_session_key
@@ -118,6 +119,18 @@ async def run_preprocessing_pipeline(
         processed_filename = f"preprocessed_{base}.csv"
         processed_path = os.path.join(user_dir, processed_filename)
         processed_df.to_csv(processed_path, index=False)
+
+        # Upload processed file to Cloudinary for persistence
+        if settings.USE_CLOUDINARY and settings.CLOUDINARY_CLOUD_NAME:
+            try:
+                from app.core.cloudinary_config import upload_to_cloudinary
+
+                processed_bytes = processed_df.to_csv(index=False).encode("utf-8")
+                public_id = f"datalens/datasets/{current_user.id}/{processed_filename}"
+                upload_to_cloudinary(processed_bytes, public_id)
+                logger.info("Uploaded processed file %s to Cloudinary", processed_filename)
+            except Exception as exc:
+                logger.warning("Cloudinary upload of processed file failed: %s", exc)
 
         results["session_key"] = session_key
         results["processed_filename"] = processed_filename

@@ -3,7 +3,10 @@ import os
 import logging
 
 import pandas as pd
+import requests
 from fastapi import HTTPException
+
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -15,13 +18,32 @@ UPLOAD_FOLDER = os.path.abspath(
 def resolve_user_file(filename: str, user_id: int) -> str:
     """Return the absolute path for a file belonging to a specific user.
 
-    Only looks in ``datasets/<user_id>/<filename>`` — strict per-user isolation.
+    Checks local disk first; falls back to downloading from Cloudinary
+    when the file is missing locally (e.g. after an ephemeral-disk restart).
     """
     safe_name = os.path.basename(filename)
 
-    user_path = os.path.join(UPLOAD_FOLDER, str(user_id), safe_name)
+    user_dir = os.path.join(UPLOAD_FOLDER, str(user_id))
+    user_path = os.path.join(user_dir, safe_name)
     if os.path.isfile(user_path):
         return user_path
+
+    # Cloudinary fallback
+    if settings.USE_CLOUDINARY and settings.CLOUDINARY_CLOUD_NAME:
+        try:
+            from app.core.cloudinary_config import cloudinary_download_url
+
+            public_id = f"datalens/datasets/{user_id}/{safe_name}"
+            url = cloudinary_download_url(public_id)
+            resp = requests.get(url, timeout=60)
+            if resp.status_code == 200:
+                os.makedirs(user_dir, exist_ok=True)
+                with open(user_path, "wb") as fh:
+                    fh.write(resp.content)
+                logger.info("Downloaded %s from Cloudinary", safe_name)
+                return user_path
+        except Exception as exc:
+            logger.warning("Cloudinary fallback failed for %s: %s", safe_name, exc)
 
     raise HTTPException(status_code=404, detail=f"File not found: {filename}")
 

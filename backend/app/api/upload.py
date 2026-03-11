@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 from app.models.dataset import Dataset
@@ -70,6 +71,19 @@ async def upload_file(
         with open(file_path, "wb") as f:
             f.write(content)
 
+        # Upload to Cloudinary for persistent cloud storage
+        cloudinary_public_id = None
+        if settings.USE_CLOUDINARY and settings.CLOUDINARY_CLOUD_NAME:
+            try:
+                from app.core.cloudinary_config import upload_to_cloudinary
+
+                public_id = f"datalens/datasets/{current_user.id}/{saved_filename}"
+                upload_result = upload_to_cloudinary(content, public_id)
+                cloudinary_public_id = upload_result["public_id"]
+                logger.info("Uploaded %s to Cloudinary", saved_filename)
+            except Exception as exc:
+                logger.warning("Cloudinary upload failed (local copy kept): %s", exc)
+
         # After file is saved to disk, record it in database
         dataset_id = None
         try:
@@ -77,7 +91,7 @@ async def upload_file(
                 user_id=current_user.id,
                 original_filename=file.filename or "upload",
                 saved_filename=saved_filename,
-                storage_path=str(file_path),
+                storage_path=cloudinary_public_id or str(file_path),
                 file_size_bytes=len(content),
             )
             db.add(dataset_record)

@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     # Admin
     ADMIN_SECRET_KEY: str = "change-me-in-env-file"
 
+    # Cloudinary
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+    USE_CLOUDINARY: bool = True
+
     @property
     def cors_origins_list(self) -> List[str]:
         return [

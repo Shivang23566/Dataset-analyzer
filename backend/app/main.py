@@ -50,9 +50,14 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── CORS — allow_credentials=True requires explicit origins, not "*" ──
+cors_origins = settings.cors_origins_list
+render_url = os.getenv("RENDER_EXTERNAL_URL")
+if render_url and render_url not in cors_origins:
+    cors_origins.append(render_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

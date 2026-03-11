@@ -179,6 +179,15 @@ async def delete_dataset(
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
+    # Delete from Cloudinary if stored there
+    if dataset.storage_path and dataset.storage_path.startswith("datalens/"):
+        try:
+            from app.core.cloudinary_config import delete_from_cloudinary
+
+            delete_from_cloudinary(dataset.storage_path)
+        except Exception:
+            pass  # Don't fail delete if Cloudinary cleanup fails
+
     dataset.is_deleted = True
     await db.commit()
     return {"message": "Dataset deleted successfully"}
