@@ -1,41 +1,180 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-dist/
-build/
-*.egg
-.venv/
-venv/
-.env
+# ============================================
+# DataLens Project .gitignore
+# ============================================
 
-# Database
-*.db
-*.sqlite3
-
-# Logs
-*.log
-
-# IDE
-.vscode/
-.idea/
+# ── Operating System ──
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 *.swp
 *.swo
+*~
 
-# OS
-.DS_Store
-Thumbs.db
+# ── IDE / Editor ──
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+.project
+.classpath
+.settings/
+*.iml
 
-# Node
+# ── Environment Files (secrets) ──
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+!.env.example
+!.env.production.example
+!frontend/.env.example
+!frontend/.env.production
+!backend/.env.example
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+env/
+.venv/
+backend/venv/
+backend/.venv/
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.prof
+
+# ── Node.js ──
 node_modules/
-
-# Frontend build output
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 frontend/dist/
+frontend/build/
+.next/
+out/
+frontend/.vite/
+*.local
+.parcel-cache/
+coverage/
+.nyc_output/
+*.tsbuildinfo
 
-# Datasets (user uploads)
-datasets/
+# ── Database ──
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
 
-# Backend server logs
-backend/server.log
-backend/server_err.log
-backend/uvicorn.log
+# ── Logs ──
+*.log
+logs/
+server.log
+server_err.log
+uvicorn.log
+npm-debug.log
+yarn-error.log
+
+# ── Runtime ──
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ── User Data & Uploads ──
+datasets/*
+!datasets/.gitkeep
+uploads/*
+!uploads/.gitkeep
+
+# ── Model Artifacts & Generated ──
+backend/store/*
+!backend/store/.gitkeep
+backend/static/assets/*
+!backend/static/assets/.gitkeep
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.hdf5
+*.onnx
+
+# ── Cache ──
+backend/cache/
+
+# ── Temp Files ──
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+backup_*/
+
+# ── Security ──
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets.yaml
+secrets.json
+credentials.json
+service-account.json
+
+# ── Docker ──
+.docker/
+
+# ── Misc ──
+.grunt
+.lock-wscript
+.eslintcache
+.stylelintcache

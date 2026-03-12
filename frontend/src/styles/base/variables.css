@@ -1,0 +1,244 @@
+:root {
+  /* ============================================
+     DATALENS — DARK OLIVE / GOLD / TEAL THEME
+     ============================================ */
+
+  /* ── PAGE BACKGROUNDS ── */
+  --color-bg-page:          #0e0f0d;
+  --color-bg-surface:       #1a1b19;
+  --color-bg-elevated:      #1e1f1c;
+  --color-bg-overlay:       #242521;
+  --color-bg-muted:         #2a2b26;
+
+  /* ── BRAND GRADIENTS ── */
+  --gradient-brand:
+    linear-gradient(135deg, #c9a84c 0%, #2eb8a0 100%);
+
+  --gradient-page-bg:
+    radial-gradient(ellipse 80% 60% at 20% 0%,  rgba(201,168,76,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(46,184,160,0.06) 0%, transparent 55%),
+    #0e0f0d;
+
+  --gradient-surface:
+    linear-gradient(160deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+
+  --gradient-hero:
+    radial-gradient(ellipse 100% 80% at 50% -10%, rgba(201,168,76,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 60%,  rgba(46,184,160,0.07) 0%, transparent 50%),
+    transparent;
+
+  /* ── ACCENT COLORS ── */
+  --color-accent-primary:      #c9a84c;
+  --color-accent-primary-soft: rgba(201,168,76,0.12);
+  --color-accent-primary-glow: rgba(201,168,76,0.25);
+
+  --color-accent-sky:          #2eb8a0;
+  --color-accent-sky-soft:     rgba(46,184,160,0.10);
+
+  --color-accent-violet:       #b8973f;
+  --color-accent-violet-soft:  rgba(184,151,63,0.10);
+
+  --color-accent-success:      #2eb8a0;
+  --color-accent-success-soft: rgba(46,184,160,0.10);
+
+  --color-accent-warning:      #c9a84c;
+  --color-accent-warning-soft: rgba(201,168,76,0.10);
+
+  --color-accent-danger:       #f87171;
+  --color-accent-danger-soft:  rgba(248,113,113,0.10);
+
+  /* ── TEXT COLORS ── */
+  --color-text-primary:   #cdc9c0;
+  --color-text-secondary: #8a8780;
+  --color-text-muted:     #4a4840;
+  --color-text-accent:    #c9a84c;
+  --color-text-inverse:   #0e0f0d;
+
+  /* ── BORDERS ── */
+  --color-border-default: rgba(255,255,255,0.06);
+  --color-border-subtle:  rgba(255,255,255,0.04);
+  --color-border-hover:   rgba(255,255,255,0.10);
+  --color-border-active:  rgba(201,168,76,0.40);
+  --color-border-success: rgba(46,184,160,0.30);
+  --color-border-warning: rgba(201,168,76,0.30);
+  --color-border-danger:  rgba(248,113,113,0.30);
+
+  /* ── SHADOWS ── */
+  --shadow-card:    0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-elevated:0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+  --shadow-glow-primary: 0 0 24px rgba(201,168,76,0.20), 0 0 48px rgba(201,168,76,0.10);
+  --shadow-glow-sky:     0 0 20px rgba(46,184,160,0.20);
+  --shadow-button:  0 4px 16px rgba(201,168,76,0.30), 0 1px 3px rgba(0,0,0,0.3);
+
+  /* ── LEGACY ALIASES (for preprocessor/ml components) ── */
+  --bg-base:       var(--color-bg-page);
+  --bg-surface:    var(--color-bg-surface);
+  --bg-elevated:   var(--color-bg-elevated);
+  --bg-subtle:     var(--color-bg-overlay);
+  --bg-muted:      var(--color-bg-muted);
+  --accent-primary:   var(--color-accent-primary);
+  --accent-primary-glow: var(--color-accent-primary-soft);
+  --accent-success:   var(--color-accent-success);
+  --accent-success-glow: var(--color-accent-success-soft);
+  --accent-warning:   var(--color-accent-warning);
+  --accent-warning-glow: var(--color-accent-warning-soft);
+  --accent-danger:    var(--color-accent-danger);
+  --accent-danger-glow: var(--color-accent-danger-soft);
+  --accent-info:      var(--color-accent-sky);
+  --text-primary:   var(--color-text-primary);
+  --text-secondary:var(--color-text-secondary);
+  --text-muted:    var(--color-text-muted);
+  --text-accent:   var(--color-text-accent);
+  --border-default: var(--color-border-default);
+  --border-hover:  var(--color-border-hover);
+  --border-active: var(--color-border-active);
+  --border-success: var(--color-border-success);
+  --border-warning: var(--color-border-warning);
+  --border-danger: var(--color-border-danger);
+
+  /* ── Shortcuts for old variables ── */
+  --bg: var(--color-bg-page);
+  --ink: var(--color-text-primary);
+  --muted: var(--color-text-secondary);
+  --card: var(--color-bg-surface);
+  --accent: var(--color-accent-primary);
+  --accent-2: var(--color-accent-sky);
+  --line: var(--color-border-default);
+  --shadow: var(--shadow-card);
+
+  /* ── RADII & FONTS ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+  --font-display: 'Space Grotesk', 'Outfit', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'DM Mono', monospace;
+
+  /* ── TYPOGRAPHY SCALE (Perfect Fourth 1.333) ── */
+  --text-xs:   0.75rem;      /* 12px */
+  --text-sm:   0.875rem;     /* 14px */
+  --text-base: 1rem;         /* 16px */
+  --text-md:   1.125rem;     /* 18px */
+  --text-lg:   1.333rem;     /* ~21px */
+  --text-xl:   1.777rem;     /* ~28px */
+  --text-2xl:  2.369rem;     /* ~38px */
+  --text-3xl:  3.157rem;     /* ~50px */
+  --text-4xl:  4.209rem;     /* ~67px */
+  --text-5xl:  5.61rem;      /* ~90px */
+
+  /* ── LINE HEIGHTS ── */
+  --leading-none:    1;
+  --leading-tight:   1.1;
+  --leading-snug:    1.3;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.7;
+  --leading-loose:   2;
+
+  /* ── LETTER SPACING ── */
+  --tracking-tighter: -0.04em;
+  --tracking-tight:   -0.02em;
+  --tracking-normal:   0;
+  --tracking-wide:     0.04em;
+  --tracking-wider:    0.08em;
+  --tracking-widest:   0.12em;
+
+  /* ── FONT WEIGHTS ── */
+  --font-light:     300;
+  --font-regular:   400;
+  --font-medium:    500;
+  --font-semibold:  600;
+  --font-bold:      700;
+  --font-extrabold: 800;
+
+  /* ── FIBONACCI SPACING ── */
+  --space-1:  1px;
+  --space-2:  2px;
+  --space-3:  3px;
+  --space-5:  5px;
+  --space-8:  8px;
+  --space-13: 13px;
+  --space-21: 21px;
+  --space-34: 34px;
+  --space-55: 55px;
+  --space-89: 89px;
+
+  /* Semantic spacing aliases */
+  --space-xs:  var(--space-2);
+  --space-sm:  var(--space-5);
+  --space-md:  var(--space-8);
+  --space-lg:  var(--space-13);
+  --space-xl:  var(--space-21);
+  --space-2xl: var(--space-34);
+  --space-3xl: var(--space-55);
+  --space-4xl: var(--space-89);
+
+  /* Component spacing */
+  --card-padding:    var(--space-21);
+  --card-gap:        var(--space-13);
+  --section-padding: var(--space-34);
+  --page-padding-x:  var(--space-34);
+  --page-padding-y:  var(--space-55);
+  --input-padding-x: var(--space-13);
+  --input-padding-y: var(--space-8);
+  --button-padding-x: var(--space-21);
+  --button-padding-y: var(--space-8);
+  --navbar-height:   var(--space-55);
+
+  /* ── NEUTRAL GRAY SCALE (olive-tinted) ── */
+  --color-gray-950: #0e0f0d;
+  --color-gray-900: #1a1b19;
+  --color-gray-850: #1e1f1c;
+  --color-gray-800: #242521;
+  --color-gray-750: #2a2b26;
+  --color-gray-700: #3d3b34;
+  --color-gray-600: #4a4840;
+  --color-gray-500: #5a5648;
+  --color-gray-400: #7a7669;
+  --color-gray-300: #8a8780;
+  --color-gray-200: #9a9688;
+  --color-gray-100: #cdc9c0;
+  --color-gray-50:  #d4cfc8;
+
+  /* ── BRAND COLOR VARIANTS ── */
+  --color-brand-gold:       #c9a84c;
+  --color-brand-gold-light: #e8cc7a;
+  --color-brand-gold-dark:  #a07830;
+  --color-brand-teal:       #2eb8a0;
+  --color-brand-teal-light: #4dd9be;
+  --color-brand-teal-dark:  #1a9a88;
+
+  /* ── SEMANTIC STATUS COLORS ── */
+  --color-success: var(--color-accent-success);
+  --color-warning: var(--color-accent-warning);
+  --color-danger:  var(--color-accent-danger);
+  --color-info:    var(--color-accent-sky);
+
+  /* ── ANIMATION TOKENS ── */
+  --ease-default:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in:        cubic-bezier(0.4, 0, 1, 1);
+  --ease-out:       cubic-bezier(0, 0, 0.2, 1);
+  --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out:    cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce:    cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --duration-instant: 50ms;
+  --duration-fast:    150ms;
+  --duration-normal:  250ms;
+  --duration-slow:    400ms;
+  --duration-slower:  600ms;
+  --duration-slowest: 1000ms;
+
+  /* Standard transition composites */
+  --transition-colors: color var(--duration-fast) var(--ease-default),
+                       background-color var(--duration-fast) var(--ease-default),
+                       border-color var(--duration-fast) var(--ease-default);
+  --transition-opacity: opacity var(--duration-normal) var(--ease-default);
+  --transition-transform: transform var(--duration-normal) var(--ease-out);
+  --transition-shadow: box-shadow var(--duration-fast) var(--ease-default);
+  --transition-all: all var(--duration-normal) var(--ease-spring);
+}

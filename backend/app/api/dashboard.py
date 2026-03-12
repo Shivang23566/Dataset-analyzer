@@ -1,8 +1,9 @@
 import logging
 from datetime import datetime, timezone
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.api.deps import get_current_active_user
@@ -23,22 +24,49 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 async def _get_or_create_subscription(
     user: User, db: AsyncSession
 ) -> Subscription:
-    result = await db.execute(
-        select(Subscription).where(Subscription.user_id == user.id)
-    )
+    """Get existing subscription or create one atomically.
+
+    Uses row-level locking (FOR UPDATE) to prevent race conditions
+    when multiple concurrent requests try to create subscriptions.
+    Falls back gracefully for SQLite (no FOR UPDATE support).
+    """
+    try:
+        result = await db.execute(
+            select(Subscription)
+            .where(Subscription.user_id == user.id)
+            .with_for_update(nowait=False)
+        )
+    except Exception:
+        # Fallback for SQLite (no FOR UPDATE support)
+        result = await db.execute(
+            select(Subscription).where(Subscription.user_id == user.id)
+        )
     sub = result.scalar_one_or_none()
 
     if sub is None:
-        # Create new subscription synced from User model
-        sub = Subscription(
-            user_id=user.id,
-            plan=user.subscription_plan or "free",
-            status=user.subscription_status or "active",
-            expires_at=user.subscription_expires_at,
-        )
-        db.add(sub)
-        await db.commit()
-        await db.refresh(sub)
+        # Create new subscription synced from User model with conflict handling
+        try:
+            sub = Subscription(
+                user_id=user.id,
+                plan=user.subscription_plan or "free",
+                status=user.subscription_status or "active",
+                expires_at=user.subscription_expires_at,
+            )
+            db.add(sub)
+            await db.commit()
+            await db.refresh(sub)
+        except IntegrityError:
+            # Race condition: another request created the subscription
+            await db.rollback()
+            result = await db.execute(
+                select(Subscription).where(Subscription.user_id == user.id)
+            )
+            sub = result.scalar_one_or_none()
+            if not sub:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to initialize subscription. Please try again.",
+                )
     else:
         # Sync existing subscription from User model if mismatched
         needs_sync = (

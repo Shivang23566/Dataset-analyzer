@@ -99,25 +99,15 @@ export default function AccountSection() {
 
   if (loading) {
     return (
-      <div style={{
-        padding: '60px 0', textAlign: 'center',
-        color: '#4a4840', fontStyle: 'italic', fontSize: 13,
-        fontFamily: "'Inter', sans-serif",
-      }}>Loading profile...</div>
+      <div className="db-loading-state">Loading profile...</div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }} className="db-fade-up">
+    <div className="db-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div>
-        <div style={{
-          fontFamily: "'Inter', sans-serif", fontSize: 10,
-          color: '#4a4840', letterSpacing: '0.12em', marginBottom: 6,
-        }}>SETTINGS</div>
-        <h2 style={{
-          fontFamily: "'Inter', sans-serif",
-          fontSize: 34, color: '#d4cfc8', fontWeight: 700,
-        }}>Account Settings</h2>
+        <div className="db-section-overline">SETTINGS</div>
+        <h2 className="db-section-title">Account Settings</h2>
       </div>
 
       {/* ── Profile Information Card ── */}
@@ -125,7 +115,7 @@ export default function AccountSection() {
         <div className="db-account-card-header">
           <span className="db-account-card-title">PROFILE INFORMATION</span>
         </div>
-        <div style={{ padding: '24px 28px' }}>
+        <div className="db-card-body">
           <div className="db-form-group">
             <label className="db-label">Full Name</label>
             <input
@@ -146,15 +136,10 @@ export default function AccountSection() {
               disabled
               title="Email cannot be changed"
             />
-            <span style={{
-              fontSize: 10, color: '#5a5648', fontStyle: 'italic', marginTop: 4, display: 'block',
-            }}>Email address cannot be changed</span>
+            <span className="db-input-hint">Email address cannot be changed</span>
           </div>
 
-          <div style={{
-            display: 'flex', gap: 24, marginTop: 8, marginBottom: 20,
-            flexWrap: 'wrap',
-          }}>
+          <div className="db-meta-row">
             <div>
               <span className="db-meta-label">Member Since</span>
               <span className="db-meta-value">{formatDate(profile?.created_at ?? null)}</span>
@@ -165,19 +150,11 @@ export default function AccountSection() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div className="db-btn-row">
             <button
-              className="db-btn-primary"
+              className="db-btn-primary db-btn-teal"
               onClick={handleSaveProfile}
               disabled={savingProfile}
-              style={{
-                background: 'linear-gradient(135deg, #2eb8a0, #1a9a88)',
-                color: '#fff', padding: '10px 24px', borderRadius: 9,
-                fontSize: 12, letterSpacing: '0.06em',
-                fontFamily: "'Inter', sans-serif", fontWeight: 500,
-                boxShadow: '0 4px 20px rgba(46,184,160,0.2)',
-                opacity: savingProfile ? 0.6 : 1,
-              }}
             >
               {savingProfile ? 'Saving...' : 'Save Changes'}
             </button>
@@ -190,7 +167,7 @@ export default function AccountSection() {
         <div className="db-account-card-header">
           <span className="db-account-card-title">CHANGE PASSWORD</span>
         </div>
-        <div style={{ padding: '24px 28px' }}>
+        <div className="db-card-body">
           <div className="db-form-group">
             <label className="db-label">Current Password</label>
             <input
@@ -222,19 +199,11 @@ export default function AccountSection() {
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+          <div className="db-btn-row" style={{ marginTop: 4 }}>
             <button
-              className="db-btn-primary"
+              className="db-btn-primary db-btn-gold"
               onClick={handleUpdatePassword}
               disabled={savingPassword}
-              style={{
-                background: 'linear-gradient(135deg, #c9a84c, #a07830)',
-                color: '#fff', padding: '10px 24px', borderRadius: 9,
-                fontSize: 12, letterSpacing: '0.06em',
-                fontFamily: "'Inter', sans-serif", fontWeight: 500,
-                boxShadow: '0 4px 20px rgba(201,168,76,0.2)',
-                opacity: savingPassword ? 0.6 : 1,
-              }}
             >
               {savingPassword ? 'Updating...' : 'Update Password'}
             </button>

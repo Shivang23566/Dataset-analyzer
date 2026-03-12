@@ -1,6 +1,26 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
+import { execSync } from 'child_process';
+
+// One-time CSS module setup: runs setup script if index.css doesn't exist yet
+const INDEX_CSS = path.resolve(__dirname, 'src/styles/index.css');
+if (!fs.existsSync(INDEX_CSS)) {
+  console.log('\n[vite] CSS modules not found — running setup...');
+  const scriptRoot = path.resolve(__dirname, '..');
+  let done = false;
+  // Try node first, then python
+  for (const cmd of ['node setup-dirs.js', 'python create_dirs.py']) {
+    try {
+      execSync(cmd, { cwd: scriptRoot, stdio: 'inherit' });
+      done = true;
+      break;
+    } catch (_) { /* try next */ }
+  }
+  if (done) console.log('[vite] CSS module setup complete.\n');
+  else console.error('[vite] CSS module setup failed — run manually: node setup-dirs.js\n');
+}
 
 export default defineConfig({
   plugins: [react()],

@@ -1,0 +1,129 @@
+/* ============================================================
+   TABLES — DataLens component styles
+   Depends on: base/variables.css
+   ============================================================ */
+
+/* ── Base table ── */
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+}
+
+/* ── Table head ── */
+thead {
+  background: var(--color-bg-elevated);
+}
+
+thead th {
+  padding: var(--space-13) var(--space-21);
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  border-bottom: 2px solid var(--color-border-default);
+}
+
+/* ── Table cells ── */
+td {
+  padding: var(--space-13) var(--space-21);
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+}
+
+th {
+  padding: var(--space-13) var(--space-21);
+  text-align: left;
+}
+
+/* ── Row hover ── */
+tbody tr {
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+tbody tr:hover {
+  background: var(--color-accent-primary-soft);
+}
+
+/* ── Zebra striping ── */
+table.striped tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+table.striped tbody tr:nth-child(even):hover {
+  background: var(--color-accent-primary-soft);
+}
+
+/* ── Compact variant ── */
+table.compact th,
+table.compact td {
+  padding: var(--space-8) var(--space-13);
+}
+
+/* ── Data table (mono columns) ── */
+.data-table td.numeric,
+.data-table td.code {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ── Sortable columns ── */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+/* ── Badge system ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-8);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  border-radius: var(--radius-sm);
+  line-height: var(--leading-normal);
+}
+
+.badge-success {
+  background: var(--color-accent-success-soft);
+  color: var(--color-accent-success);
+}
+
+.badge-warning {
+  background: var(--color-accent-warning-soft);
+  color: var(--color-accent-warning);
+}
+
+.badge-danger {
+  background: var(--color-accent-danger-soft);
+  color: var(--color-accent-danger);
+}
+
+.badge-info {
+  background: var(--color-accent-sky-soft);
+  color: var(--color-accent-sky);
+}
+
+.badge-pro {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.15), rgba(46, 184, 160, 0.12));
+  color: var(--color-accent-primary);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+}
+
+.badge-neutral {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}

@@ -107,27 +107,42 @@ def _model_path(session_key: str) -> str:
 
 
 def _save_model_to_disk(session_key: str, entry: Dict) -> None:
-    """Persist model artifacts to disk so they survive server restarts."""
+    """Persist model artifacts to disk and cache backend so they survive server restarts."""
     try:
         joblib.dump(entry, _model_path(session_key))
         logger.info("Model saved to disk: %s", session_key)
         _cleanup_old_model_files()
     except Exception:
         logger.exception("Failed to save model to disk: %s", session_key)
+    # Also persist to cache backend (file/Redis) for multi-worker sharing
+    try:
+        from app.core.cache import model_cache
+        model_cache.store_model(session_key, entry.get("model"), entry)
+    except Exception:
+        pass
 
 
 def _load_model_from_disk(session_key: str) -> Optional[Dict]:
-    """Load model artifacts from disk if not in memory."""
+    """Load model artifacts from disk or cache backend if not in memory."""
     path = _model_path(session_key)
-    if not os.path.isfile(path):
-        return None
+    if os.path.isfile(path):
+        try:
+            entry = joblib.load(path)
+            logger.info("Model loaded from disk: %s", session_key)
+            return entry
+        except Exception:
+            logger.exception("Failed to load model from disk: %s", session_key)
+    # Fallback to cache backend
     try:
-        entry = joblib.load(path)
-        logger.info("Model loaded from disk: %s", session_key)
-        return entry
+        from app.core.cache import model_cache
+        result = model_cache.get_model(session_key)
+        if result:
+            _, metadata = result
+            logger.info("Model loaded from cache backend: %s", session_key)
+            return metadata
     except Exception:
-        logger.exception("Failed to load model from disk: %s", session_key)
-        return None
+        pass
+    return None
 
 
 def _cleanup_old_model_files() -> None:
@@ -158,6 +173,26 @@ def _get_model_entry(session_key: str) -> Optional[Dict]:
         entry["_created_at"] = time.monotonic()
         MODEL_STORE[session_key] = entry
     return entry
+
+
+def cleanup_model_artifacts(session_key: str) -> None:
+    """Remove all artifacts for a failed/aborted training session."""
+    # Remove from in-memory store
+    MODEL_STORE.pop(session_key, None)
+    # Remove from disk
+    path = _model_path(session_key)
+    if os.path.isfile(path):
+        try:
+            os.remove(path)
+            logger.info("Cleaned up model file: %s", path)
+        except OSError as exc:
+            logger.warning("Failed to remove model file %s: %s", path, exc)
+    # Remove from cache backend
+    try:
+        from app.core.cache import model_cache
+        model_cache.delete_model(session_key)
+    except Exception:
+        pass
 
 
 def _evict_expired_entries():
@@ -639,6 +674,7 @@ def train_model(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str, Any]:
     cv_folds = int(config.get("cv_folds", 5))
     test_size = float(config.get("test_size", 0.2))
     random_state = int(config.get("random_state", 42))
+    owner_user_id = config.get("user_id")  # for ownership tracking
 
     if task == "clustering":
         X_raw = df.select_dtypes(include=[np.number]).fillna(0)
@@ -696,6 +732,7 @@ def train_model(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str, Any]:
         entry = {"model": model, "feature_names": feature_names, "model_id": model_id,
                  "task": task, "hyperparams": hyperparams, "metrics": metrics,
                  "training_date": datetime.now(timezone.utc).isoformat(),
+                 "user_id": owner_user_id,
                  "_created_at": time.monotonic()}
         MODEL_STORE[session_key] = entry
         _save_model_to_disk(session_key, entry)
@@ -807,6 +844,7 @@ def train_model(df: pd.DataFrame, config: Dict[str, Any]) -> Dict[str, Any]:
         "task": task, "hyperparams": best_params, "metrics": metrics,
         "training_date": datetime.now(timezone.utc).isoformat(),
         "n_train_samples": len(X_train), "n_test_samples": len(X_test), "n_features": len(feature_names),
+        "user_id": owner_user_id,
         "_created_at": time.monotonic(),
     }
     MODEL_STORE[session_key] = entry
@@ -833,6 +871,14 @@ def export_model_pickle(session_key: str) -> Optional[bytes]:
     buf = io.BytesIO()
     joblib.dump(entry["model"], buf)
     return buf.getvalue()
+
+
+def get_model_owner(session_key: str) -> Optional[int]:
+    """Return the user_id that owns the model session, or None if not found."""
+    entry = _get_model_entry(session_key)
+    if not entry:
+        return None
+    return entry.get("user_id")
 
 
 def generate_inference_code(session_key: str) -> str:

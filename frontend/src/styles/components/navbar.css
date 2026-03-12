@@ -1,0 +1,38 @@
+.nav-shell {
+  position: sticky;
+  top: 14px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--color-border-default);
+  background: rgba(14,15,13,0.85);
+  backdrop-filter: blur(16px);
+  border-radius: 18px;
+}
+
+.brand-pill {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--color-text-primary);
+}
+
+.nav-links {
+  display: flex;
+  gap: 14px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.nav-links a:hover {
+  color: var(--color-text-primary);
+}
+
+.nav-actions {
+  display: flex;
+  gap: 8px;
+}

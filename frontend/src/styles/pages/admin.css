@@ -1,0 +1,58 @@
+/* ============================================================
+   ADMIN PAGE — Extracted inline styles
+   Used by: AdminPage.tsx
+   ============================================================ */
+
+/* Header left group (icon + text) */
+.admin-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Settings gear icon badge */
+.admin-icon-badge {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--color-brand-gold), var(--color-accent-violet));
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-base);
+  color: var(--color-bg-page);
+}
+
+/* Subtitle under header */
+.admin-subtitle {
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+  margin: 0;
+}
+
+/* Tab icon spacing */
+.admin-tab-icon {
+  margin-right: 6px;
+}
+
+/* Empty table cell placeholder */
+.admin-empty-cell {
+  text-align: center;
+  color: var(--color-gray-500);
+  padding: 32px;
+}
+
+/* User ID column */
+.admin-user-id {
+  color: var(--color-gray-500);
+}
+
+/* Muted placeholder text (missing name, etc.) */
+.admin-text-muted {
+  color: var(--color-gray-700);
+}
+
+/* User role text */
+.admin-user-role {
+  color: var(--color-gray-500);
+}

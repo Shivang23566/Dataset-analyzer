@@ -1,0 +1,140 @@
+/* ============================================================
+   FORMS — DataLens component styles
+   Depends on: base/variables.css
+   ============================================================ */
+
+/* ── Base input elements ── */
+input,
+select,
+textarea {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-default);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  padding: var(--input-padding-y) var(--input-padding-x);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: var(--color-border-hover);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-border-active);
+  box-shadow: 0 0 0 3px var(--color-accent-primary-soft);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: var(--leading-normal);
+}
+
+/* ── Form group ── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-bottom: var(--space-21);
+}
+
+/* ── Form label ── */
+.form-label {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* ── Error state ── */
+.form-input-error,
+input.error,
+select.error,
+textarea.error {
+  border-color: var(--color-accent-danger);
+}
+
+.form-input-error:focus,
+input.error:focus,
+select.error:focus,
+textarea.error:focus {
+  box-shadow: 0 0 0 3px var(--color-accent-danger-soft);
+}
+
+/* ── Success state ── */
+input.success,
+select.success {
+  border-color: var(--color-accent-success);
+}
+
+input.success:focus,
+select.success:focus {
+  box-shadow: 0 0 0 3px var(--color-accent-success-soft);
+}
+
+/* ── Disabled state ── */
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ── Helper text ── */
+.form-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.form-error {
+  font-size: var(--text-xs);
+  color: var(--color-accent-danger);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ── Checkbox & Radio ── */
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  accent-color: var(--color-accent-primary);
+  cursor: pointer;
+}
+
+/* ── Input with icon ── */
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon input {
+  padding-left: calc(var(--input-padding-x) + 24px + var(--space-5));
+}
+
+.input-with-icon .input-icon {
+  position: absolute;
+  left: var(--input-padding-x);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}

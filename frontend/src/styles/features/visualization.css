@@ -1,0 +1,424 @@
+.chart-preview {
+  margin-top: 14px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 12px;
+  background: var(--color-bg-elevated);
+  padding: 10px;
+}
+
+.chart-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VISUALIZATION BUILDER — REDESIGN
+═══════════════════════════════════════════════════════════ */
+
+.viz-panel { position: relative; }
+
+/* ── Header ─────────────────────────────────────────────── */
+.viz-header { margin-bottom: 18px; }
+
+.viz-title {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', Times, serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  line-height: 1.1;
+}
+
+.viz-title-underline {
+  height: 2px;
+  width: 56px;
+  background: var(--color-accent-sky);
+  margin-top: 7px;
+  transform-origin: left center;
+  animation: eda-underline-in 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.viz-subtitle {
+  margin: 8px 0 0;
+  font-size: 0.84rem;
+  color: var(--color-text-secondary);
+}
+
+/* ── Toolbar ─────────────────────────────────────────────── */
+.viz-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 14px;
+  background: var(--color-bg-surface);
+  backdrop-filter: blur(4px);
+  margin-bottom: 16px;
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+}
+
+/* ── Chart type pill strip ──────────────────────────────── */
+.viz-pill-strip {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.viz-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-default);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+
+.viz-pill:hover:not(.viz-pill--active) {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
+.viz-pill--active {
+  background: var(--gradient-brand);
+  color: white;
+  border-color: transparent;
+  box-shadow: var(--shadow-button);
+}
+
+/* ── Toolbar right side ─────────────────────────────────── */
+.viz-toolbar-right {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.viz-loading-cols {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── Axis token selectors ───────────────────────────────── */
+.viz-token-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.viz-token-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.viz-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  min-width: 100px;
+  max-width: 180px;
+}
+
+.viz-token:hover:not(:disabled) {
+  border-color: var(--color-border-active);
+  box-shadow: 0 0 0 2px var(--color-accent-primary-soft);
+}
+
+.viz-token--open {
+  border-color: var(--color-border-active);
+  box-shadow: 0 0 0 2px var(--color-accent-primary-soft);
+}
+
+.viz-token:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.viz-token-name {
+  font-family: ui-monospace, Consolas, monospace;
+  font-weight: 700;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  text-align: left;
+}
+
+.viz-token-dtype {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border-default);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+
+.viz-token-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 0.18s;
+}
+
+.viz-token-chevron.open { transform: rotate(180deg); }
+
+/* ── Floating dropdown panel ────────────────────────────── */
+.viz-drop-panel {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  min-width: 180px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: var(--shadow-elevated);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-drop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.84rem;
+  color: var(--color-text-primary);
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.viz-drop-item:hover  { background: var(--color-bg-overlay); }
+.viz-drop-item.active { background: var(--color-accent-primary-soft); }
+
+.viz-drop-name {
+  font-family: ui-monospace, Consolas, monospace;
+  font-weight: 600;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.viz-drop-badge {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border-default);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+
+/* ── Generate button ────────────────────────────────────── */
+.viz-gen-btn {
+  padding: 8px 16px;
+  font-size: 0.86rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  align-self: flex-end;
+}
+
+.viz-spin {
+  animation: viz-spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Chart canvas area ──────────────────────────────────── */
+.viz-canvas-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.viz-canvas-area {
+  border: 1px solid var(--color-border-default);
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  overflow: hidden;
+  background: var(--color-bg-elevated);
+}
+
+.viz-chart-title {
+  padding: 12px 16px 8px;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border-default);
+  outline: none;
+  cursor: text;
+  min-height: 1em;
+  transition: background 0.15s;
+}
+
+.viz-chart-title:focus {
+  background: var(--color-accent-primary-soft);
+}
+
+.viz-chart-title[contenteditable]:empty::before {
+  content: 'Double-click to edit title';
+  color: var(--color-text-muted);
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Graph-paper pattern background */
+.viz-chart-paper {
+  position: relative;
+  background-color: var(--color-bg-elevated);
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+}
+
+.viz-chart-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Export + history strip ─────────────────────────────── */
+.viz-export-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border-default);
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  background: var(--color-bg-surface);
+}
+
+.viz-export-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.viz-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.viz-export-btn:hover {
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+  background: var(--color-bg-elevated);
+}
+
+.viz-history {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.viz-history-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.viz-history-thumb {
+  width: 44px;
+  height: 30px;
+  border: 2px solid var(--color-border-default);
+  border-radius: 5px;
+  overflow: hidden;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.viz-history-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.viz-history-thumb:hover   { opacity: 0.85; border-color: var(--color-border-hover); }
+.viz-history-thumb.active  { opacity: 1;    border-color: var(--color-accent-primary); }
+
+/* ── Empty state ────────────────────────────────────────── */
+.viz-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 180px;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border-default);
+  border-radius: 14px;
+  padding: 28px;
+  text-align: center;
+}
+
+.viz-empty-icon { opacity: 0.3; }
+.viz-empty p    { margin: 0; font-size: 0.88rem; }

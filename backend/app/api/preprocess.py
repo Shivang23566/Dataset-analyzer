@@ -27,12 +27,14 @@ from app.services.preprocessing_engine import (
     run_pipeline,
     store_processed_df,
     get_processed_df,
+    get_processed_owner,
     export_dataframe,
     detect_outliers as _detect_outliers,
     step_train_test_split,
 )
 
 logger = logging.getLogger(__name__)
+security_logger = logging.getLogger("security.preprocess")
 router = APIRouter()
 
 
@@ -110,7 +112,7 @@ async def run_preprocessing_pipeline(
         results, processed_df = run_pipeline(df, request.config)
 
         session_key = hashlib.md5(f"{request.filename}_{time.time()}".encode()).hexdigest()[:12]
-        store_processed_df(session_key, processed_df)
+        store_processed_df(session_key, processed_df, user_id=current_user.id)
 
         # Save processed CSV to the user's directory so ML feature can pick it up
         user_dir = os.path.join(UPLOAD_FOLDER, str(current_user.id))
@@ -167,6 +169,15 @@ async def download_processed(
     db: AsyncSession = Depends(get_db),
 ):
     """Download the processed dataset in the requested format."""
+    # Ownership check
+    owner_id = get_processed_owner(session_key)
+    if owner_id is not None and owner_id != current_user.id:
+        security_logger.warning(
+            "PREPROCESS_ACCESS_DENIED | user=%s | owner=%s | session_key=%s",
+            current_user.id, owner_id, session_key,
+        )
+        raise HTTPException(status_code=403, detail="Access denied")
+
     df = get_processed_df(session_key)
     if df is None:
         raise HTTPException(status_code=404, detail="Processed dataset not found. Run the pipeline first.")

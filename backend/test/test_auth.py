@@ -6,46 +6,40 @@ from httpx import AsyncClient
 # ── Signup ────────────────────────────────────────────────────
 
 @pytest.mark.anyio
-async def test_signup_success(client: AsyncClient):
+async def test_signup_legacy_endpoint_blocked(client: AsyncClient):
+    """Legacy /signup endpoint returns 410 Gone (disabled in favor of OTP flow)."""
     resp = await client.post("/auth/signup", json={
         "email": "test_signup_ok@example.com",
         "password": "StrongPass1",
     })
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["email"] == "test_signup_ok@example.com"
-    assert "id" in data
+    assert resp.status_code == 410
 
 
 @pytest.mark.anyio
-async def test_signup_weak_password(client: AsyncClient):
-    """Password validation now lives in the Pydantic schema, so FastAPI
-    returns 422 (Unprocessable Entity) when the password is too weak."""
+async def test_signup_weak_password_blocked(client: AsyncClient):
+    """Legacy /signup returns 410 Gone regardless of payload."""
     resp = await client.post("/auth/signup", json={
         "email": "weak@example.com",
         "password": "short",
     })
-    assert resp.status_code == 422
-    body = resp.json()
-    assert any("password" in str(e).lower() for e in body.get("detail", []))
+    assert resp.status_code == 410
 
 
 @pytest.mark.anyio
-async def test_signup_duplicate_email(client: AsyncClient):
+async def test_signup_duplicate_blocked(client: AsyncClient):
+    """Legacy /signup returns 410 Gone for all requests."""
     email = "dup_test@example.com"
-    await client.post("/auth/signup", json={"email": email, "password": "StrongPass1"})
     resp = await client.post("/auth/signup", json={"email": email, "password": "StrongPass1"})
-    assert resp.status_code == 400
-    assert "already exists" in resp.json()["detail"].lower()
+    assert resp.status_code == 410
 
 
 @pytest.mark.anyio
-async def test_signup_invalid_email(client: AsyncClient):
+async def test_signup_invalid_email_blocked(client: AsyncClient):
     resp = await client.post("/auth/signup", json={
         "email": "not-an-email",
         "password": "StrongPass1",
     })
-    assert resp.status_code == 422
+    assert resp.status_code == 410
 
 
 # ── Login ─────────────────────────────────────────────────────
@@ -54,7 +48,8 @@ async def test_signup_invalid_email(client: AsyncClient):
 async def test_login_success(client: AsyncClient):
     email = "login_ok@example.com"
     password = "StrongPass1"
-    await client.post("/auth/signup", json={"email": email, "password": password})
+    from test.conftest import _ensure_test_user
+    await _ensure_test_user(email, password)
     resp = await client.post("/auth/login", data={"username": email, "password": password})
     assert resp.status_code == 200
     data = resp.json()

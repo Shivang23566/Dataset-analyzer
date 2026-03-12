@@ -1,4 +1,4 @@
-import { clearAuth, getToken, saveAuth } from './authStore';
+import { clearAuth, getToken, getRefreshToken, setAccessToken, saveAuth } from './authStore';
 import type {
   ColumnResponse,
   CouponResponse,
@@ -36,13 +36,7 @@ const API_BASE_URL: string = _isProduction
   ? ''
   : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000');
 
-if (typeof window !== 'undefined') {
-  console.log('[API Config]', {
-    hostname: window.location.hostname,
-    isProduction: _isProduction,
-    API_BASE_URL: API_BASE_URL || '(empty - same origin)',
-  });
-}
+// API config logging removed during cleanup
 
 // Simple response cache to avoid redundant fetches on tab switches (TTL: 30s)
 const _cache = new Map<string, { data: unknown; ts: number }>();
@@ -59,10 +53,44 @@ function setCache(key: string, data: unknown) {
   _cache.set(key, { data, ts: Date.now() });
 }
 
+// Flag to prevent concurrent refresh requests
+let _refreshPromise: Promise<boolean> | null = null;
+
+async function _tryRefreshToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const resp = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!resp.ok) return false;
+    const data = await resp.json() as { access_token: string; refresh_token: string };
+    setAccessToken(data.access_token);
+    // Update stored refresh token (rotation)
+    saveAuth(data.access_token, '', data.refresh_token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureAccessToken(): Promise<void> {
+  if (getToken()) return;
+  // No access token in memory — try to restore from refresh token
+  if (!_refreshPromise) {
+    _refreshPromise = _tryRefreshToken().finally(() => { _refreshPromise = null; });
+  }
+  await _refreshPromise;
+}
+
 async function request<T>(path: string, init?: RequestInit, auth = false): Promise<T> {
   const headers = new Headers(init?.headers ?? {});
 
   if (auth) {
+    await ensureAccessToken();
     const token = getToken();
     if (!token) {
       throw new Error('Not authenticated. Please login again.');
@@ -75,13 +103,20 @@ async function request<T>(path: string, init?: RequestInit, auth = false): Promi
     headers,
   });
 
-  if (!response.ok) {
-    // Auto-logout on 401 (token expired or invalid)
-    if (response.status === 401 && auth) {
-      clearAuth();
-      window.location.href = '/login';
-      throw new Error('Session expired. Please login again.');
+  // On 401, attempt a single refresh before giving up
+  if (response.status === 401 && auth) {
+    const refreshed = await _tryRefreshToken();
+    if (refreshed) {
+      headers.set('Authorization', `Bearer ${getToken()}`);
+      const retry = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+      if (retry.ok) return (await retry.json()) as T;
     }
+    clearAuth();
+    window.location.href = '/login';
+    throw new Error('Session expired. Please login again.');
+  }
+
+  if (!response.ok) {
 
     const text = await response.text();
     let message = text || `Request failed: ${response.status}`;
@@ -121,7 +156,7 @@ export async function backendLogin(payload: LoginPayload) {
   body.set('username', payload.email);
   body.set('password', payload.password);
 
-  const data = await request<TokenResponse>('/auth/login', {
+  const data = await request<TokenResponse & { refresh_token?: string }>('/auth/login', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -129,8 +164,43 @@ export async function backendLogin(payload: LoginPayload) {
     body: body.toString(),
   });
 
-  saveAuth(data.access_token, payload.email);
+  saveAuth(data.access_token, payload.email, data.refresh_token);
   return data;
+}
+
+// ── OTP Signup Flow ──────────────────────────────────────────
+
+export async function initiateSignup(payload: SignupPayload) {
+  return request<{ message: string; email: string; expires_in_minutes: number }>(
+    '/auth/signup/initiate',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function verifySignupOTP(email: string, otp: string) {
+  return request<{ access_token: string; token_type: string; user: Record<string, unknown> }>(
+    '/auth/signup/verify',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp }),
+    },
+  );
+}
+
+export async function resendSignupOTP(email: string) {
+  return request<{ message: string; expires_in_minutes: number }>(
+    '/auth/signup/resend-otp',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    },
+  );
 }
 
 export async function getCurrentUser() {
@@ -186,7 +256,18 @@ export async function generateVisualization(params: {
   }, true);
 }
 
-export function logout() {
+export async function logout() {
+  const refreshToken = getRefreshToken();
+  if (refreshToken) {
+    // Best-effort server-side revocation
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+    } catch { /* ignore */ }
+  }
   clearAuth();
 }
 

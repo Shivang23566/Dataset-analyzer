@@ -25,6 +25,7 @@ from app.api.admin import router as admin_router
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.limiter import limiter
+from app.core.security_headers import SecurityHeadersMiddleware
 
 # ── Logging ──────────────────────────────────────────────────
 logging.basicConfig(
@@ -70,6 +71,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Security headers — applied after CORS so CORS headers are preserved
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # Register API routers

@@ -7,10 +7,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.path_security import (
+    sanitize_filename,
+    get_user_directory,
+    InvalidFilenameError,
+    PathTraversalError,
+)
 from app.models.user import User
 from app.models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+security_logger = logging.getLogger("security.upload")
 router = APIRouter()
 
 UPLOAD_FOLDER = os.path.abspath(
@@ -20,6 +27,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {".csv", ".json"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+CHUNK_SIZE = 1024 * 1024           # 1 MB streaming chunks
 
 
 @router.post("/upload/")
@@ -29,7 +37,15 @@ async def upload_file(
     _: User = Depends(deps.check_dataset_limit),
     db: AsyncSession = Depends(get_db),
 ):
-    original_filename = os.path.basename(file.filename or "upload")
+    try:
+        original_filename = sanitize_filename(file.filename or "upload")
+    except (InvalidFilenameError, PathTraversalError) as exc:
+        security_logger.warning(
+            "UPLOAD_FILENAME_REJECTED | user=%s | filename='%s' | reason=%s",
+            current_user.id, file.filename, exc,
+        )
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
     _, extension = os.path.splitext(original_filename)
 
     if extension.lower() not in ALLOWED_EXTENSIONS:
@@ -39,8 +55,7 @@ async def upload_file(
         )
 
     # Build per-user directory to isolate files
-    user_dir = os.path.join(UPLOAD_FOLDER, str(current_user.id))
-    os.makedirs(user_dir, exist_ok=True)
+    user_dir = str(get_user_directory(UPLOAD_FOLDER, current_user.id))
 
     file_path = os.path.join(user_dir, original_filename)
     saved_filename = original_filename
@@ -57,19 +72,26 @@ async def upload_file(
             counter += 1
 
     try:
-        content = await file.read()
-
-        if len(content) == 0:
-            raise HTTPException(status_code=400, detail="Empty file uploaded")
-
-        if len(content) > MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB.",
-            )
-
+        # Stream file to disk in chunks to avoid loading entire file into memory
+        total_size = 0
         with open(file_path, "wb") as f:
-            f.write(content)
+            while True:
+                chunk = await file.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if total_size > MAX_FILE_SIZE:
+                    f.close()
+                    os.unlink(file_path)
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB.",
+                    )
+                f.write(chunk)
+
+        if total_size == 0:
+            os.unlink(file_path)
+            raise HTTPException(status_code=400, detail="Empty file uploaded")
 
         # Upload to Cloudinary for persistent cloud storage
         cloudinary_public_id = None
@@ -78,6 +100,9 @@ async def upload_file(
                 from app.core.cloudinary_config import upload_to_cloudinary
 
                 public_id = f"datalens/datasets/{current_user.id}/{saved_filename}"
+                # Read back from disk for Cloudinary (avoids keeping in memory)
+                with open(file_path, "rb") as cf:
+                    content = cf.read()
                 upload_result = upload_to_cloudinary(content, public_id)
                 cloudinary_public_id = upload_result["public_id"]
                 logger.info("Uploaded %s to Cloudinary", saved_filename)
@@ -92,7 +117,7 @@ async def upload_file(
                 original_filename=file.filename or "upload",
                 saved_filename=saved_filename,
                 storage_path=cloudinary_public_id or str(file_path),
-                file_size_bytes=len(content),
+                file_size_bytes=total_size,
             )
             db.add(dataset_record)
             await db.commit()

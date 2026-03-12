@@ -20,6 +20,7 @@ import { extractErrorMessage } from '../lib/errorUtils';
 import AccountSection from '../components/AccountSection';
 import BillingSection from '../components/BillingSection';
 import { ToastContainer } from '../components/ToastContainer';
+import '../styles/pages/dashboard.css';
 
 // ── Type configs (same as mockup) ──────────────
 const typeConfig: Record<string, {
@@ -135,33 +136,12 @@ function SectionCard({
   style?: React.CSSProperties;
 }) {
   return (
-    <div style={{
-      background: "linear-gradient(160deg, #161712 0%, #121310 100%)",
-      border: "1px solid rgba(201,168,76,0.11)",
-      borderRadius: 16,
-      overflow: "hidden",
-      boxShadow: "0 2px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(201,168,76,0.05)",
-      ...style,
-    }}>
+    <div className="db-section-card" style={style}>
       {(title || action) && (
-        <div style={{
-          padding: "16px 22px 13px",
-          borderBottom: "1px solid rgba(201,168,76,0.07)",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: "rgba(201,168,76,0.02)",
-        }}>
-          <span style={{
-            fontFamily: "'Inter', sans-serif",
-            fontSize: 12, color: "#8a8272",
-            letterSpacing: "0.12em", textTransform: "uppercase",
-          }}>{title}</span>
+        <div className="db-section-card__header">
+          <span className="db-section-card__title">{title}</span>
           {action && (
-            <button className="link-btn" onClick={onAction}
-              style={{
-                fontFamily: "'Inter', sans-serif", fontSize: 11,
-                color: "#5a5648", letterSpacing: "0.04em",
-                background: "none", border: "none", cursor: "pointer",
-              }}>
+            <button className="db-section-card__action link-btn" onClick={onAction}>
               {action} →
             </button>
           )}
@@ -174,13 +154,7 @@ function SectionCard({
 
 function AnalysisBadge({ done, label }: { done: boolean; label: string }) {
   return (
-    <span style={{
-      fontSize: 10, padding: "3px 9px", borderRadius: 20,
-      fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em",
-      background: done ? "rgba(46,184,160,0.1)" : "rgba(255,255,255,0.03)",
-      color: done ? "#2eb8a0" : "#3d3b34",
-      border: `1px solid ${done ? "rgba(46,184,160,0.22)" : "rgba(255,255,255,0.05)"}`,
-    }}>
+    <span className={`db-analysis-badge ${done ? 'db-analysis-badge--done' : 'db-analysis-badge--pending'}`}>
       {done ? "✓" : "·"} {label}
     </span>
   );
@@ -345,11 +319,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh', background: '#0e0f0d',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: '#4a4840', fontFamily: "'Inter', sans-serif", fontStyle: 'italic',
-      }}>
+      <div className="db-loading-state">
         Loading dashboard...
       </div>
     );
@@ -357,21 +327,10 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div style={{
-        minHeight: '100vh', background: '#0e0f0d',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexDirection: 'column', gap: 16,
-        color: '#c9933a', fontFamily: "'Inter', sans-serif",
-      }}>
-        <div style={{ fontSize: 16 }}>Failed to load dashboard</div>
-        <div style={{ fontSize: 13, color: '#5a5648', fontStyle: 'italic' }}>{error}</div>
-        <button onClick={() => window.location.reload()} style={{
-          marginTop: 8, padding: '8px 20px', borderRadius: 8,
-          background: 'rgba(201,168,76,0.1)',
-          border: '1px solid rgba(201,168,76,0.2)',
-          color: '#c9a84c', cursor: 'pointer',
-          fontFamily: "'Inter', sans-serif", fontSize: 11,
-        }}>Retry</button>
+      <div className="db-error-state">
+        <div className="db-error-state__title">Failed to load dashboard</div>
+        <div className="db-error-state__detail">{error}</div>
+        <button onClick={() => window.location.reload()} className="db-error-state__retry">Retry</button>
       </div>
     );
   }

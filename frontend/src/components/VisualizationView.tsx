@@ -159,11 +159,9 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
       setChartGenerated(false);
 
       try {
-        console.log('[VisualizationView] Loading columns for:', filename);
         const response = await getColumns(filename);
         if (cancelled) return;
 
-        console.log('[VisualizationView] Received columns:', response.columns?.length);
 
         // BUG FIX 1: Parse columns and infer types
         const parsedColumns: ParsedColumn[] = response.columns.map((col: DatasetColumn) => {
@@ -187,7 +185,6 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
           };
         });
 
-        console.log('[VisualizationView] Parsed columns:', parsedColumns);
         setColumns(parsedColumns);
 
         // Store raw preview data if available
@@ -200,7 +197,6 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
         const firstValidX = parsedColumns.find((c) => currentConfig.xAccepts.includes(c.type));
         const firstValidY = parsedColumns.find((c) => currentConfig.yAccepts.includes(c.type));
 
-        console.log('[VisualizationView] Auto-selected X:', firstValidX?.name, 'Y:', firstValidY?.name);
 
         if (firstValidX) {
           setXColumn(firstValidX.name);
@@ -238,35 +234,24 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
 
   const xOptions = useMemo(() => {
     const options = columns.filter((c) => chartConfig.xAccepts.includes(c.type));
-    console.log('[VisualizationView] X Options filtered:', options.length, 'from', columns.length, 'columns for chart type', chartConfig.id);
-    console.log('[VisualizationView] X Options:', options.map(o => `${o.name}(${o.type})`).join(', '));
     return options;
   }, [columns, chartConfig]);
 
   const yOptions = useMemo(() => {
     if (chartConfig.hideYAxis) return [];
     const options = columns.filter((c) => chartConfig.yAccepts.includes(c.type));
-    console.log('[VisualizationView] Y Options filtered:', options.length, 'from', columns.length, 'columns for chart type', chartConfig.id);
-    console.log('[VisualizationView] Y Options:', options.map(o => `${o.name}(${o.type})`).join(', '));
     return options;
   }, [columns, chartConfig]);
 
   // Auto-select first valid option when chart type changes
   useEffect(() => {
-    console.log('[VisualizationView] Chart type changed to:', chartType);
-    console.log('[VisualizationView] Current X:', xColumn, 'Y:', yColumn);
-    console.log('[VisualizationView] Available columns:', columns.length);
-    console.log('[VisualizationView] X Options count:', xOptions.length, 'Y Options count:', yOptions.length);
-    console.log('[VisualizationView] xOptions:', xOptions.length, 'yOptions:', yOptions.length);
 
     if (xOptions.length > 0 && !xOptions.find((c) => c.name === xColumn)) {
       const newX = xOptions[0].name;
-      console.log('[VisualizationView] Auto-selecting new X:', newX);
       setXColumn(newX);
     }
     if (yOptions.length > 0 && !yOptions.find((c) => c.name === yColumn)) {
       const newY = yOptions[0].name;
-      console.log('[VisualizationView] Auto-selecting new Y:', newY);
       setYColumn(newY);
     }
     // Clear chart when type changes
@@ -306,13 +291,6 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
       return;
     }
 
-    console.log('[VisualizationView] Generating chart:', {
-      chartType,
-      xColumn,
-      yColumn,
-      filename,
-    });
-
     setLoadingChart(true);
     setError('');
 
@@ -326,7 +304,6 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
       });
 
       if (result.success) {
-        console.log('[VisualizationView] Chart generated successfully');
         setGeneratedChartImage(result.image || '');
         setChartGenerated(true);
       } else {
@@ -491,7 +468,6 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      console.log('[VisualizationView] Chart downloaded successfully');
     } catch (err) {
       console.error('[VisualizationView] Download failed:', err);
       setError('Failed to download chart');
@@ -552,21 +528,21 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
         return (
           <ResponsiveContainer width="100%" height={500}>
             <BarChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1F2A3D" opacity={0.3} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" opacity={0.3} />
               <XAxis
                 dataKey={xColumn}
-                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                tick={{ fill: '#8a8780', fontSize: 12 }}
                 angle={-45}
                 textAnchor="end"
                 height={80}
               />
-              <YAxis tick={{ fill: '#8B9CB8', fontSize: 12 }} />
+              <YAxis tick={{ fill: '#8a8780', fontSize: 12 }} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0D1221',
-                  border: '1px solid #1F2A3D',
+                  backgroundColor: '#1a1b19',
+                  border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: '8px',
-                  color: '#EFF2F7',
+                  color: '#cdc9c0',
                 }}
               />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
@@ -579,21 +555,21 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
         return (
           <ResponsiveContainer width="100%" height={500}>
             <LineChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1F2A3D" opacity={0.3} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" opacity={0.3} />
               <XAxis
                 dataKey={xColumn}
-                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                tick={{ fill: '#8a8780', fontSize: 12 }}
                 angle={-45}
                 textAnchor="end"
                 height={80}
               />
-              <YAxis tick={{ fill: '#8B9CB8', fontSize: 12 }} />
+              <YAxis tick={{ fill: '#8a8780', fontSize: 12 }} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0D1221',
-                  border: '1px solid #1F2A3D',
+                  backgroundColor: '#1a1b19',
+                  border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: '8px',
-                  color: '#EFF2F7',
+                  color: '#cdc9c0',
                 }}
               />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
@@ -613,25 +589,25 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
         return (
           <ResponsiveContainer width="100%" height={500}>
             <ScatterChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1F2A3D" opacity={0.3} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" opacity={0.3} />
               <XAxis
                 dataKey={xColumn}
                 type="number"
-                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                tick={{ fill: '#8a8780', fontSize: 12 }}
                 name={xColumn}
               />
               <YAxis
                 dataKey={yColumn}
                 type="number"
-                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                tick={{ fill: '#8a8780', fontSize: 12 }}
                 name={yColumn}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0D1221',
-                  border: '1px solid #1F2A3D',
+                  backgroundColor: '#1a1b19',
+                  border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: '8px',
-                  color: '#EFF2F7',
+                  color: '#cdc9c0',
                 }}
                 cursor={{ strokeDasharray: '3 3' }}
               />
@@ -650,10 +626,10 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
               data={histogramData}
               margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#1F2A3D" opacity={0.3} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" opacity={0.3} />
               <XAxis
                 dataKey="bin"
-                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                tick={{ fill: '#8a8780', fontSize: 12 }}
                 angle={-45}
                 textAnchor="end"
                 height={80}
@@ -661,24 +637,24 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
                   value: xColumn,
                   position: 'insideBottom',
                   offset: -10,
-                  fill: '#EFF2F7',
+                  fill: '#cdc9c0',
                 }}
               />
               <YAxis
-                tick={{ fill: '#8B9CB8', fontSize: 12 }}
+                tick={{ fill: '#8a8780', fontSize: 12 }}
                 label={{
                   value: 'Frequency',
                   angle: -90,
                   position: 'insideLeft',
-                  fill: '#EFF2F7',
+                  fill: '#cdc9c0',
                 }}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0D1221',
-                  border: '1px solid #1F2A3D',
+                  backgroundColor: '#1a1b19',
+                  border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: '8px',
-                  color: '#EFF2F7',
+                  color: '#cdc9c0',
                 }}
               />
               <Bar dataKey="frequency" fill={CHART_COLORS[2]} radius={[8, 8, 0, 0]} />
@@ -698,7 +674,7 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
                 cy="50%"
                 outerRadius={150}
                 label={(entry: any) => `${entry[xColumn]}: ${entry[yColumn].toFixed(1)}`}
-                labelLine={{ stroke: '#8B9CB8' }}
+                labelLine={{ stroke: '#8a8780' }}
               >
                 {chartData.slice(0, 8).map((_, index) => (
                   <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -706,10 +682,10 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
               </Pie>
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0D1221',
-                  border: '1px solid #1F2A3D',
+                  backgroundColor: '#1a1b19',
+                  border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: '8px',
-                  color: '#EFF2F7',
+                  color: '#cdc9c0',
                 }}
               />
               <Legend />
@@ -850,7 +826,6 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
                             type="button"
                             className={`viz-drop-item${xColumn === col.name ? ' active' : ''}`}
                             onClick={() => {
-                              console.log('[VisualizationView] User selected X column:', col.name);
                               setXColumn(col.name);
                               setXDropdownOpen(false);
                               setChartGenerated(false);
@@ -907,7 +882,6 @@ export default function VisualizationView({ filename }: VisualizationViewProps) 
                               type="button"
                               className={`viz-drop-item${yColumn === col.name ? ' active' : ''}`}
                               onClick={() => {
-                                console.log('[VisualizationView] User selected Y column:', col.name);
                                 setYColumn(col.name);
                                 setYDropdownOpen(false);
                                 setGeneratedChartImage('');

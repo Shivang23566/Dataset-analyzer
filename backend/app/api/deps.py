@@ -1,7 +1,8 @@
+import logging
 from datetime import datetime, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+from jose import jwt, JWTError
 from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,9 @@ from app.models.subscription import Subscription
 from app.models.dataset import Dataset
 from app.schemas import token as token_schemas
 
+logger = logging.getLogger(__name__)
+security_logger = logging.getLogger("security.authorization")
+
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl="/auth/login"
 )
@@ -23,9 +27,7 @@ async def get_current_user(
     token: str = Depends(reusable_oauth2)
 ) -> User:
     try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        payload = security.decode_token(token)
         token_data = token_schemas.TokenPayload(**payload)
     except (JWTError, ValidationError):
         raise HTTPException(
@@ -70,13 +72,24 @@ async def require_pro(
     Dependency that blocks free users from accessing Pro features.
     Checks both the User.subscription_plan field AND the
     Subscriptions table for active status and expiry.
+
+    Uses SELECT … FOR UPDATE to prevent race conditions during
+    concurrent subscription checks and modifications.
     """
-    # Check subscription table for most accurate status
-    result = await db.execute(
-        select(Subscription).where(
-            Subscription.user_id == current_user.id
+    # Check subscription table with row lock to prevent race conditions
+    try:
+        result = await db.execute(
+            select(Subscription).where(
+                Subscription.user_id == current_user.id
+            ).with_for_update(nowait=False)
         )
-    )
+    except Exception:
+        # Fallback for SQLite (no FOR UPDATE support)
+        result = await db.execute(
+            select(Subscription).where(
+                Subscription.user_id == current_user.id
+            )
+        )
     sub = result.scalar_one_or_none()
 
     is_pro = False

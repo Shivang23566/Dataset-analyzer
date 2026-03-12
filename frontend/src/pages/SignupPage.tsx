@@ -1,14 +1,13 @@
 import { Link, useNavigate } from 'react-router-dom';
 import AuthForm from '../components/AuthForm';
-import { backendLogin, backendSignup } from '../lib/api';
+import { initiateSignup } from '../lib/api';
 
 export default function SignupPage() {
   const navigate = useNavigate();
 
   const onSubmit = async (email: string, password: string) => {
-    await backendSignup({ email, password });
-    await backendLogin({ email, password });
-    navigate('/dashboard');
+    await initiateSignup({ email, password });
+    navigate('/verify-email', { state: { email } });
   };
 
   return (
@@ -17,7 +16,7 @@ export default function SignupPage() {
         title="Create Account"
         subtitle="Start your secure dataset analysis workflow in minutes."
         submitText="Sign Up"
-        loadingText="Creating..."
+        loadingText="Sending code..."
         onSubmit={onSubmit}
       />
       <p className="auth-switch">

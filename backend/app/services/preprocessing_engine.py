@@ -961,17 +961,41 @@ def _evict_processed():
             del PROCESSED_STORE[k]
 
 
-def store_processed_df(session_key: str, df: pd.DataFrame):
+def store_processed_df(session_key: str, df: pd.DataFrame, user_id: int = None):
     import time as _time
     _evict_processed()
-    PROCESSED_STORE[session_key] = {"df": df.copy(), "_created_at": _time.monotonic()}
+    PROCESSED_STORE[session_key] = {"df": df.copy(), "_created_at": _time.monotonic(), "user_id": user_id}
+    # Persist to cache backend so data survives restarts
+    try:
+        from app.core.cache import df_cache
+        df_cache.store_df(session_key, df)
+    except Exception:
+        pass
 
 
 def get_processed_df(session_key: str) -> Optional[pd.DataFrame]:
     entry = PROCESSED_STORE.get(session_key)
     if entry is None:
+        # Try persistent cache backend (file/Redis)
+        try:
+            from app.core.cache import df_cache
+            cached_df = df_cache.get_df(session_key)
+            if cached_df is not None:
+                import time as _time
+                PROCESSED_STORE[session_key] = {"df": cached_df, "_created_at": _time.monotonic()}
+                return cached_df
+        except Exception:
+            pass
         return None
     return entry.get("df")
+
+
+def get_processed_owner(session_key: str) -> Optional[int]:
+    """Return the user_id that owns the processed session, or None if not found."""
+    entry = PROCESSED_STORE.get(session_key)
+    if entry is None:
+        return None
+    return entry.get("user_id")
 
 
 def export_dataframe(df: pd.DataFrame, fmt: str) -> Tuple[bytes, str, str]:

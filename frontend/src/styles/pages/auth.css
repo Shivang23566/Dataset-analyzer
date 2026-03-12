@@ -1,0 +1,291 @@
+.auth-layout {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.auth-card {
+  width: min(100%, 420px);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  box-shadow: var(--shadow-elevated);
+  border-radius: 18px;
+  padding: 22px;
+}
+
+.auth-card h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  color: var(--color-text-primary);
+}
+
+.auth-card p {
+  color: var(--color-text-secondary);
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 7px;
+  font-size: 14px;
+}
+
+.auth-switch {
+  margin-top: 14px;
+  color: var(--color-text-muted);
+}
+
+.auth-switch a {
+  text-decoration: underline;
+  color: var(--color-accent-primary);
+}
+
+.auth-switch a:hover {
+  color: var(--color-accent-violet);
+}
+
+.error-banner,
+.success-banner {
+  margin-top: 12px;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 14px;
+}
+
+.error-banner {
+  background: var(--color-accent-danger-soft);
+  border: 1px solid var(--color-border-danger);
+  color: var(--color-accent-danger);
+}
+
+.success-banner {
+  background: var(--color-accent-success-soft);
+  border: 1px solid var(--color-border-success);
+  color: var(--color-accent-success);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ============================================
+   OTP INPUT COMPONENT
+   ============================================ */
+
+.otp-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.otp-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.otp-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 60px;
+  background: var(--color-bg-surface);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+  transition: all 0.2s ease;
+}
+
+.otp-slot:hover { border-color: rgba(255, 255, 255, 0.2); }
+.otp-slot-active { border-color: var(--color-accent-primary) !important; box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.2); }
+.otp-slot-filled { background: linear-gradient(135deg, rgba(201, 168, 76, 0.1), rgba(46, 184, 160, 0.05)); border-color: var(--color-accent-primary); }
+
+.otp-slot-error {
+  border-color: var(--color-accent-danger) !important;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.2);
+  animation: otp-shake 0.5s ease-in-out;
+}
+
+.otp-slot-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.otp-char { color: var(--color-accent-primary); }
+
+.otp-caret {
+  position: absolute;
+  width: 2px;
+  height: 24px;
+  background: var(--color-accent-primary);
+}
+
+.otp-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-gray-500);
+  font-size: 1.5rem;
+  padding: 0 4px;
+}
+
+/* ============================================
+   EMAIL VERIFICATION PAGE
+   ============================================ */
+
+.verify-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-page);
+  padding: 20px;
+}
+
+.verify-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--color-bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 48px 40px;
+  text-align: center;
+}
+
+.verify-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.15), rgba(46, 184, 160, 0.1));
+  border: 2px solid rgba(201, 168, 76, 0.3);
+  border-radius: 50%;
+  color: var(--color-accent-primary);
+}
+
+.verify-title {
+  font-family: 'Lora', serif;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 8px 0;
+}
+
+.verify-subtitle {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 8px 0;
+}
+
+.verify-email {
+  font-weight: 600;
+  color: var(--color-accent-primary);
+  word-break: break-all;
+}
+
+.verify-otp-section { margin: 32px 0; }
+.verify-label { font-size: 0.875rem; color: var(--color-text-secondary); margin-bottom: 16px; text-align: center; }
+
+.verify-error {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 8px;
+  color: var(--color-accent-danger);
+  font-size: 0.875rem;
+}
+
+.verify-success {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(46, 184, 160, 0.1);
+  border: 1px solid rgba(46, 184, 160, 0.3);
+  border-radius: 8px;
+  color: var(--color-accent-sky);
+  font-size: 0.875rem;
+}
+
+.verify-button {
+  width: 100%;
+  padding: 14px 24px;
+  margin-top: 24px;
+  background: linear-gradient(135deg, #c9a84c, #b8973f);
+  color: var(--color-bg-page);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.verify-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(201, 168, 76, 0.25);
+}
+
+.verify-button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.verify-resend {
+  margin-top: 24px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.verify-resend button {
+  background: none;
+  border: none;
+  color: var(--color-accent-sky);
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.verify-resend button:hover { color: #3dd9b8; }
+.verify-resend button:disabled { color: var(--color-gray-500); cursor: not-allowed; text-decoration: none; }
+
+.verify-back {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.verify-back button {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.verify-back button:hover { color: var(--color-text-primary); }
+
+.verify-timer { font-size: 0.8125rem; color: var(--color-gray-500); margin-top: 8px; }
+.verify-timer span { color: var(--color-accent-primary); font-weight: 600; }
+
+@media (max-width: 480px) {
+  .verify-card { padding: 32px 20px; }
+  .otp-slot { width: 42px; height: 50px; font-size: 1.25rem; }
+  .otp-separator { font-size: 1.25rem; padding: 0 2px; }
+}
+

@@ -1,10 +1,11 @@
 import logging
+import math
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -417,16 +418,55 @@ async def delete_coupon(
 
 # ─────────────────────────────────────────────
 # ENDPOINT 7: GET /admin/users/list
-# List all users with subscription info
+# List users with pagination, search, and filtering
 # ─────────────────────────────────────────────
 @router.get("/users/list")
 async def list_users(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    search: Optional[str] = Query(None, description="Search by email or name"),
+    plan_filter: Optional[str] = Query(None, description="Filter by subscription plan"),
+    sort_by: str = Query("created_at", description="Sort field"),
+    sort_order: str = Query("desc", description="asc or desc"),
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    result = await db.execute(
-        select(User).order_by(desc(User.created_at))
-    )
+    # Build base query
+    query = select(User)
+    count_query = select(func.count(User.id))
+
+    # Apply search filter
+    if search:
+        search_term = f"%{search}%"
+        search_filter = or_(
+            User.email.ilike(search_term),
+            User.full_name.ilike(search_term),
+        )
+        query = query.where(search_filter)
+        count_query = count_query.where(search_filter)
+
+    # Apply plan filter
+    if plan_filter and plan_filter in ("free", "pro"):
+        query = query.where(User.subscription_plan == plan_filter)
+        count_query = count_query.where(User.subscription_plan == plan_filter)
+
+    # Get total count
+    total_result = await db.execute(count_query)
+    total = total_result.scalar_one()
+    total_pages = max(1, math.ceil(total / page_size))
+
+    # Apply sorting
+    sort_column = getattr(User, sort_by, User.created_at)
+    if sort_order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
+    # Apply pagination
+    offset = (page - 1) * page_size
+    query = query.offset(offset).limit(page_size)
+
+    result = await db.execute(query)
     users = result.scalars().all()
 
     return {
@@ -451,7 +491,12 @@ async def list_users(
             }
             for u in users
         ],
-        "total": len(users),
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
     }
 
 

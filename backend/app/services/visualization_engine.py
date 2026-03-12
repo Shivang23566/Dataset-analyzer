@@ -1,4 +1,8 @@
 """
+DEPRECATED: This module is superseded by chart_engine.py which uses a cleaner
+registry pattern. All chart generation should go through chart_engine.get_chart_engine().
+This file is kept only for reference and will be removed in a future release.
+
 Accepts a pandas DataFrame and chart configuration, returns a Base64-encoded
 image of the chart generated using Matplotlib and Seaborn.
 Industry-grade visualization engine with Dark Cosmos Theme integration.

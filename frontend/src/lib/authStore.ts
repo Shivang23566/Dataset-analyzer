@@ -1,22 +1,38 @@
-const TOKEN_KEY = 'dataset_analyzer_jwt';
+const REFRESH_TOKEN_KEY = 'dataset_analyzer_refresh';
 const EMAIL_KEY = 'dataset_analyzer_email';
 
-export function saveAuth(token: string, email: string) {
-  localStorage.setItem(TOKEN_KEY, token);
+// Access token kept in memory only (not localStorage) to limit XSS exposure
+let _accessToken = '';
+
+export function saveAuth(accessToken: string, email: string, refreshToken?: string) {
+  _accessToken = accessToken;
   localStorage.setItem(EMAIL_KEY, email);
+  if (refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  }
 }
 
 export function clearAuth() {
-  localStorage.removeItem(TOKEN_KEY);
+  _accessToken = '';
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(EMAIL_KEY);
 }
 
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY) ?? '';
+  return _accessToken;
 }
 
 export function hasToken() {
-  return Boolean(getToken());
+  // Consider authenticated if we have an access token OR a refresh token to restore from
+  return Boolean(_accessToken) || Boolean(localStorage.getItem(REFRESH_TOKEN_KEY));
+}
+
+export function getRefreshToken() {
+  return localStorage.getItem(REFRESH_TOKEN_KEY) ?? '';
+}
+
+export function setAccessToken(token: string) {
+  _accessToken = token;
 }
 
 export function getLoggedInEmail() {

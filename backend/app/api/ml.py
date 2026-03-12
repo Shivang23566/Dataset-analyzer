@@ -32,9 +32,12 @@ from app.services.ml_engine import (
     export_model_pickle,
     generate_inference_code,
     generate_model_card_md,
+    cleanup_model_artifacts,
+    get_model_owner,
 )
 
 logger = logging.getLogger(__name__)
+security_logger = logging.getLogger("security.ml")
 router = APIRouter()
 
 
@@ -146,6 +149,7 @@ async def train(
         "cv_folds": request.cv_folds,
         "test_size": request.test_size,
         "random_state": request.random_state,
+        "user_id": current_user.id,
     }
     try:
         # Run CPU-bound training in a thread pool to avoid blocking the event loop
@@ -178,6 +182,17 @@ async def train(
     except HTTPException:
         raise
     except Exception as e:
+        # Clean up partial model artifacts on training failure
+        session_key = None
+        try:
+            # If training partially succeeded and stored artifacts, clean them up
+            if 'result' in locals() and isinstance(result, dict):
+                session_key = result.get("session_key")
+            if session_key:
+                cleanup_model_artifacts(session_key)
+                logger.warning("Cleaned up artifacts for failed session: %s", session_key)
+        except Exception as cleanup_err:
+            logger.warning("Artifact cleanup failed: %s", cleanup_err)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -188,6 +203,17 @@ async def download_model(
     db: AsyncSession = Depends(get_db),
 ):
     """Download trained model as a joblib file."""
+    # Ownership check
+    owner_id = get_model_owner(session_key)
+    if owner_id is None:
+        raise HTTPException(status_code=404, detail="Model not found. Train a model first.")
+    if owner_id != current_user.id:
+        security_logger.warning(
+            "MODEL_ACCESS_DENIED | user=%s | owner=%s | session_key=%s",
+            current_user.id, owner_id, session_key,
+        )
+        raise HTTPException(status_code=403, detail="Access denied")
+
     pkl_bytes = export_model_pickle(session_key)
     if pkl_bytes is None:
         raise HTTPException(status_code=404, detail="Model not found. Train a model first.")
@@ -218,6 +244,15 @@ async def inference_code(
     current_user: User = Depends(deps.require_pro),
 ):
     """Return Python inference code snippet for the trained model."""
+    owner_id = get_model_owner(session_key)
+    if owner_id is None:
+        raise HTTPException(status_code=404, detail="Model session not found")
+    if owner_id != current_user.id:
+        security_logger.warning(
+            "MODEL_ACCESS_DENIED | user=%s | owner=%s | session_key=%s",
+            current_user.id, owner_id, session_key,
+        )
+        raise HTTPException(status_code=403, detail="Access denied")
     code = generate_inference_code(session_key)
     if not code:
         raise HTTPException(status_code=404, detail="Model session not found")
@@ -230,6 +265,15 @@ async def model_card(
     current_user: User = Depends(deps.require_pro),
 ):
     """Return model card markdown for the trained model."""
+    owner_id = get_model_owner(session_key)
+    if owner_id is None:
+        raise HTTPException(status_code=404, detail="Model session not found")
+    if owner_id != current_user.id:
+        security_logger.warning(
+            "MODEL_ACCESS_DENIED | user=%s | owner=%s | session_key=%s",
+            current_user.id, owner_id, session_key,
+        )
+        raise HTTPException(status_code=403, detail="Access denied")
     md = generate_model_card_md(session_key)
     if md == "Model not found":
         raise HTTPException(status_code=404, detail="Model session not found")

@@ -1,0 +1,405 @@
+/* ============================================================
+   ACCOUNT & BILLING — db-* classes rescued from global.css
+   Used by: AccountSection.tsx, BillingSection.tsx
+   ============================================================ */
+
+.db-account-card {
+  background: linear-gradient(160deg, #161712 0%, #121310 100%);
+  border: 1px solid rgba(201, 168, 76, 0.11);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(201, 168, 76, 0.05);
+}
+
+.db-account-card-header {
+  padding: 16px 28px 13px;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.07);
+  background: rgba(201, 168, 76, 0.02);
+}
+
+.db-account-card-title {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-gray-300);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+}
+
+.db-form-group {
+  margin-bottom: 18px;
+}
+
+.db-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--color-gray-300);
+  letter-spacing: 0.06em;
+  margin-bottom: 7px;
+  text-transform: uppercase;
+}
+
+.db-input {
+  width: 100%;
+  padding: 11px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(201, 168, 76, 0.12);
+  border-radius: 9px;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  outline: none;
+  transition:
+    border-color var(--duration-normal) var(--ease-default),
+    box-shadow var(--duration-normal) var(--ease-default);
+}
+
+.db-input::placeholder {
+  color: var(--color-gray-700);
+  font-style: italic;
+}
+
+.db-input:focus {
+  border-color: rgba(46, 184, 160, 0.35);
+  box-shadow: 0 0 0 3px rgba(46, 184, 160, 0.08);
+}
+
+.db-input-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.db-meta-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--color-gray-500);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.db-meta-value {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-gray-200);
+}
+
+/* ============================================================
+   ACCOUNT & BILLING — Extracted inline styles
+   ============================================================ */
+
+/* Loading state for account / billing sections */
+.db-loading-state {
+  padding: 60px 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 13px;
+  font-family: var(--font-body);
+}
+
+/* Section overline label (SETTINGS, SUBSCRIPTION) */
+.db-section-overline {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  letter-spacing: var(--tracking-widest);
+  margin-bottom: 6px;
+}
+
+/* Section page title */
+.db-section-title {
+  font-family: var(--font-body);
+  font-size: 34px;
+  color: var(--color-gray-50);
+  font-weight: var(--font-bold);
+}
+
+/* Card body padding */
+.db-card-body {
+  padding: 24px 28px;
+}
+
+.db-card-body-lg {
+  padding: 28px;
+}
+
+/* Hint text below inputs */
+.db-input-hint {
+  font-size: 10px;
+  color: var(--color-gray-500);
+  font-style: italic;
+  margin-top: 4px;
+  display: block;
+}
+
+/* Meta info row (Member Since, Last Login) */
+.db-meta-row {
+  display: flex;
+  gap: 24px;
+  margin-top: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+/* Right-aligned button row */
+.db-btn-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Teal gradient button ── */
+.db-btn-teal {
+  background: linear-gradient(135deg, var(--color-brand-teal), var(--color-brand-teal-dark));
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 9px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  font-family: var(--font-body);
+  font-weight: var(--font-medium);
+  box-shadow: 0 4px 20px rgba(46, 184, 160, 0.2);
+  border: none;
+  cursor: pointer;
+}
+
+.db-btn-teal:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Compact teal button for inline forms (coupon row) */
+.db-btn-teal-compact {
+  padding: 10px 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Gold gradient button ── */
+.db-btn-gold {
+  background: linear-gradient(135deg, var(--color-brand-gold), var(--color-brand-gold-dark));
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 9px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  font-family: var(--font-body);
+  font-weight: var(--font-medium);
+  box-shadow: 0 4px 20px rgba(201, 168, 76, 0.2);
+  border: none;
+  cursor: pointer;
+}
+
+.db-btn-gold:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Larger gold button (Upgrade CTA) */
+.db-btn-gold-lg {
+  padding: 12px 28px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: var(--font-semibold);
+  box-shadow: 0 4px 24px rgba(201, 168, 76, 0.25);
+}
+
+/* ── Card header flex layout ── */
+.db-card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Active subscription badge */
+.db-active-badge {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--color-accent-sky);
+  font-family: var(--font-body);
+  background: var(--color-accent-sky-soft);
+  border: 1px solid rgba(46, 184, 160, 0.22);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
+
+/* ── Plan badge box ── */
+.db-plan-badge {
+  width: 90px;
+  min-height: 90px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0;
+  flex-shrink: 0;
+}
+
+.db-plan-badge--pro {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.15), rgba(201, 168, 76, 0.05));
+  border: 1px solid rgba(201, 168, 76, 0.25);
+}
+
+.db-plan-badge--free {
+  background: linear-gradient(135deg, rgba(122, 118, 105, 0.15), rgba(122, 118, 105, 0.05));
+  border: 1px solid rgba(122, 118, 105, 0.25);
+}
+
+.db-plan-badge--upgrade {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.18), rgba(201, 168, 76, 0.06));
+  border: 1px solid rgba(201, 168, 76, 0.3);
+}
+
+/* Plan name inside badge */
+.db-plan-badge-name {
+  font-size: var(--text-md);
+  font-weight: var(--font-bold);
+  font-family: var(--font-body);
+}
+
+.db-plan-badge-name--pro {
+  color: var(--color-accent-primary);
+}
+
+.db-plan-badge-name--free {
+  color: var(--color-gray-400);
+}
+
+/* "Plan" label inside badge */
+.db-plan-badge-label {
+  font-size: 10px;
+  margin-top: 2px;
+  font-family: var(--font-body);
+}
+
+.db-plan-badge-label--pro {
+  color: var(--color-brand-gold-dark);
+}
+
+.db-plan-badge-label--free {
+  color: var(--color-gray-500);
+}
+
+/* Price inside badge */
+.db-plan-badge-price {
+  font-size: 10px;
+  color: var(--color-accent-primary);
+  margin-top: 4px;
+  font-family: var(--font-body);
+}
+
+/* ── Plan layout (badge + details side by side) ── */
+.db-plan-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* Plan heading text */
+.db-plan-heading {
+  font-size: var(--text-base);
+  color: var(--color-gray-50);
+  font-weight: var(--font-semibold);
+  margin-bottom: 8px;
+  font-family: var(--font-body);
+}
+
+.db-plan-heading--sm {
+  font-size: var(--text-sm);
+  margin-bottom: 6px;
+}
+
+/* Plan details column */
+.db-plan-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+/* Status info row */
+.db-status-row {
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+}
+
+.db-status-label {
+  color: var(--color-gray-300);
+}
+
+.db-status-value--active {
+  color: var(--color-accent-sky);
+}
+
+.db-status-value--warning {
+  color: #c9933a;
+}
+
+/* "Your plan includes:" label */
+.db-includes-label {
+  font-size: var(--text-xs);
+  color: var(--color-gray-300);
+  margin-bottom: 10px;
+}
+
+/* ── Feature list ── */
+.db-feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.db-feature-list--spaced {
+  margin-bottom: 20px;
+}
+
+.db-feature-item {
+  font-size: var(--text-xs);
+  color: var(--color-gray-200);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.db-feature-item--disabled {
+  color: var(--color-gray-700);
+}
+
+.db-feature-check {
+  font-size: 13px;
+}
+
+.db-feature-check--teal {
+  color: var(--color-accent-sky);
+}
+
+.db-feature-check--gold {
+  color: var(--color-accent-primary);
+}
+
+.db-feature-check--disabled {
+  color: var(--color-gray-700);
+}
+
+/* Upgrade card gold border variant */
+.db-account-card--gold {
+  border-color: rgba(201, 168, 76, 0.2);
+}
+
+/* Coupon form row */
+.db-coupon-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* Pro subscription notice */
+.db-pro-notice {
+  font-size: 11px;
+  color: var(--color-gray-500);
+  font-style: italic;
+  margin-top: 10px;
+}

@@ -8,6 +8,7 @@ const SignupPage = lazy(() => import('./pages/SignupPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const WorkspacePage = lazy(() => import('./pages/WorkspacePage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   if (!hasToken()) {
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route
           path="/dashboard"
           element={

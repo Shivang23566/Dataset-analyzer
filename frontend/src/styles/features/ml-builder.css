@@ -1,0 +1,971 @@
+/* ═══════════════════════════════════════════════════════════
+   ML BUILDER VIEW  (ml-* classes)  —  Dark Theme
+═══════════════════════════════════════════════════════════ */
+
+/* ── Layout ─────────────────────────────────────────────── */
+.ml-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 28px 32px;
+  background: var(--bg-base);
+}
+
+.ml-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ml-subtitle {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.ml-step {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ml-step-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-default);
+}
+
+.ml-step-num {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ml-step-label {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ── Target Selection ───────────────────────────────────── */
+.ml-select {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  -webkit-appearance: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  min-width: 280px;
+}
+
+.ml-select:focus {
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 3px var(--accent-primary-glow);
+}
+
+.ml-target-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ml-loading-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ── Task Badge ─────────────────────────────────────────── */
+.ml-task-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid;
+}
+
+.ml-task-badge--binary     { background: rgba(201,168,76,0.12);  border-color: rgba(201,168,76,0.3);  color: var(--accent-primary); }
+.ml-task-badge--multiclass { background: rgba(56,189,248,0.12);  border-color: rgba(56,189,248,0.3);  color: var(--accent-info); }
+.ml-task-badge--regression { background: var(--accent-warning-glow); border-color: var(--border-warning); color: var(--accent-warning); }
+.ml-task-badge--clustering { background: var(--accent-success-glow); border-color: var(--border-success); color: var(--accent-success); }
+.ml-task-badge--unknown    { background: var(--bg-muted);         border-color: var(--border-default); color: var(--text-muted); }
+
+/* ── Task Detail ────────────────────────────────────────── */
+.ml-task-detail {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ml-task-chip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  padding: 3px 10px;
+  color: var(--text-secondary);
+}
+
+.ml-task-chip--warn {
+  border-color: var(--border-warning);
+  color: var(--accent-warning);
+}
+
+/* ── Recommendation Card ────────────────────────────────── */
+.ml-rec-card {
+  background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03));
+  border: 1px solid var(--border-warning);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+}
+
+.ml-rec-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.ml-rec-icon {
+  color: #D97706;
+  flex-shrink: 0;
+}
+
+.ml-rec-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-warning);
+}
+
+.ml-rec-model {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 8px 0 4px;
+}
+
+.ml-rec-reason {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.ml-rec-factors {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.ml-rec-factors li {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.ml-rec-summary {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.ml-rec-chip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  padding: 3px 10px;
+  color: var(--text-secondary);
+}
+
+.ml-rec-chip--warn {
+  border-color: var(--border-warning);
+  color: var(--accent-warning);
+}
+
+/* ── Model Cards Grid ───────────────────────────────────── */
+.ml-model-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.ml-model-card {
+  background: var(--bg-surface);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+.ml-model-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.ml-model-card--selected {
+  border: 2px solid var(--accent-primary);
+  background: var(--accent-primary-glow);
+}
+
+.ml-model-card--recommended {
+  border-color: var(--accent-warning);
+}
+
+.ml-ai-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--accent-warning-glow);
+  border: 1px solid var(--border-warning);
+  color: var(--accent-warning);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.ml-model-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.ml-model-name {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ml-model-best {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.ml-model-pros,
+.ml-model-cons {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ml-model-pros li {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--accent-success);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.ml-model-cons li {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--accent-danger);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.ml-pro-icon { color: var(--accent-success); flex-shrink: 0; }
+.ml-con-icon { color: var(--accent-danger);  flex-shrink: 0; }
+
+.ml-model-stats {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-default);
+  margin-top: auto;
+}
+
+.ml-model-stat {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.ml-stat-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Dot Progress (replaces Stars) ──────────────────────── */
+.ml-dots {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.ml-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.ml-dot--filled { background: var(--accent-primary); }
+.ml-dot--empty  { background: var(--bg-muted); }
+
+/* ── Hyperparams ────────────────────────────────────────── */
+.ml-params-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.ml-param-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ml-param-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.ml-param-tip {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-align: center;
+  line-height: 16px;
+  cursor: help;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ml-input {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ml-input:focus {
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 3px var(--accent-primary-glow);
+}
+
+.ml-checkbox-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.ml-checkbox-label input {
+  accent-color: var(--accent-primary);
+}
+
+.ml-train-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(201,168,76,0.04);
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: var(--radius-lg);
+}
+
+.ml-cv-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.ml-slider {
+  flex: 1;
+  accent-color: var(--accent-primary);
+  height: 4px;
+}
+
+/* ── Train ──────────────────────────────────────────────── */
+.ml-train-btn {
+  background: linear-gradient(135deg, #c9a84c, #2eb8a0);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 16px 40px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(201,168,76,0.4);
+  transition: all 0.2s;
+}
+
+.ml-train-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(201,168,76,0.6);
+}
+
+.ml-train-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ml-training-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px;
+}
+
+.ml-big-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--bg-muted);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ── Results ────────────────────────────────────────────── */
+.ml-results {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ml-train-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--accent-success-glow);
+  border: 1px solid var(--border-success);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.ml-meta-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  padding: 2px 8px;
+  color: var(--text-secondary);
+}
+
+.ml-cv-score {
+  display: block;
+  padding: 10px 14px;
+  background: rgba(56,189,248,0.08);
+  border: 1px solid rgba(56,189,248,0.2);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.ml-cv-score strong {
+  color: var(--accent-info);
+}
+
+.ml-best-params {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ml-section-mini-head {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.ml-params-chips {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ml-param-chip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: rgba(56,189,248,0.08);
+  border: 1px solid rgba(56,189,248,0.2);
+  border-radius: 20px;
+  padding: 3px 10px;
+  color: var(--accent-info);
+}
+
+/* ── Metrics Grid ───────────────────────────────────────── */
+.ml-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.ml-metric-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.ml-metric-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.ml-metric-value {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.ml-metric-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Charts ─────────────────────────────────────────────── */
+.ml-chart-wrap {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ml-chart-wrap--full {
+  width: 100%;
+}
+
+.ml-chart-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.ml-charts-row {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ── Confusion Matrix ───────────────────────────────────── */
+.ml-confusion-scroll {
+  overflow-x: auto;
+}
+
+.ml-confusion-matrix {
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.ml-confusion-matrix th,
+.ml-confusion-matrix td {
+  padding: 10px 16px;
+  text-align: center;
+  border: 1px solid var(--border-default);
+}
+
+.ml-cm-corner {
+  background: var(--bg-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ml-cm-col-label,
+.ml-cm-row-label {
+  background: var(--bg-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.ml-cm-cell {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.ml-cm-cell--diag {
+  font-weight: 700;
+}
+
+/* ── Feature Importance ─────────────────────────────────── */
+.ml-feat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ml-feat-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.ml-feat-rank {
+  width: 24px;
+  height: 24px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ml-feat-name {
+  width: 160px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.ml-feat-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+
+.ml-feat-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent-primary);
+  transition: width 0.5s ease;
+}
+
+.ml-feat-val {
+  width: 60px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Cluster Charts ─────────────────────────────────────── */
+.ml-cluster-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ml-cluster-bar-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.ml-cluster-label {
+  width: 80px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ml-cluster-track {
+  flex: 1;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+
+.ml-cluster-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.ml-cluster-count {
+  width: 60px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Export ──────────────────────────────────────────────── */
+.ml-export-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+}
+
+.ml-export-btns {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ml-export-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s;
+}
+
+.ml-export-btn:hover {
+  border-color: var(--border-active);
+  color: var(--text-primary);
+  background: var(--accent-primary-glow);
+}
+
+.ml-export-btn--primary {
+  background: var(--accent-primary);
+  color: #fff;
+  border-color: var(--accent-primary);
+}
+
+.ml-export-btn--primary:hover {
+  opacity: 0.9;
+}
+
+.ml-code-block {
+  background: #0A0A0F;
+  border-radius: var(--radius-lg);
+  padding: 0;
+  overflow: hidden;
+}
+
+.ml-code-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background: #0F1117;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-default);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.ml-copy-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ml-copy-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.ml-code-pre {
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #E2E8F0;
+  overflow-x: auto;
+  line-height: 1.6;
+  white-space: pre;
+  margin: 0;
+}
+
+.ml-model-card-block {
+  background: #0F1117;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.ml-model-card-scroll {
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+/* ── Empty State ────────────────────────────────────────── */
+.ml-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 80px 0;
+  color: var(--text-muted);
+}
+
+.ml-empty-icon {
+  opacity: 0.3;
+}
+
+.viz-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ── Error Banner (ML) ──────────────────────────────────── */
+.ml-error-banner {
+  background: var(--accent-danger-glow);
+  border: 1px solid var(--border-danger);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--accent-danger);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE  —  Preprocessing & ML Builder
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .pp-health-grid { grid-template-columns: repeat(2, 1fr); }
+  .ml-model-grid { grid-template-columns: 1fr; }
+  .ml-metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .ml-params-grid { grid-template-columns: 1fr; }
+  .pp-panel, .ml-panel { padding: 16px; }
+  .pp-compare-grid { grid-template-columns: 1fr; }
+  .pp-heatmap-row { grid-template-columns: 160px 1fr 50px; }
+}

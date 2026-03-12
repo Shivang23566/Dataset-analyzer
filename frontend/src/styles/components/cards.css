@@ -1,0 +1,196 @@
+/* ============================================================
+   CARDS — DataLens component styles
+   Depends on: base/variables.css
+   ============================================================ */
+
+/* ── Existing panel ── */
+.panel {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+/* ── Card base ── */
+.card {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition:
+    border-color var(--duration-normal) var(--ease-out-quart),
+    box-shadow var(--duration-normal) var(--ease-out-quart),
+    transform var(--duration-fast) var(--ease-out-expo);
+}
+
+/* ── Elevated card (with hover) ── */
+.card-elevated {
+  box-shadow: var(--shadow-elevated);
+}
+
+.card-elevated:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevated), 0 0 0 1px var(--color-border-hover);
+}
+
+/* ── Subtle card ── */
+.card-subtle {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+}
+
+.card-subtle:hover {
+  border-color: var(--color-border-hover);
+}
+
+/* ── Interactive card ── */
+.card-interactive {
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-out-expo);
+}
+
+.card-interactive:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border-hover);
+}
+
+.card-interactive:active {
+  transform: scale(0.99);
+}
+
+/* ── Card parts ── */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-13);
+  padding: var(--card-padding);
+  padding-bottom: var(--space-13);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.card-title {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.card-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.card-body {
+  padding: var(--card-padding);
+  color: var(--color-text-secondary);
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  padding: var(--card-padding);
+  padding-top: var(--space-13);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+/* ── Card accent borders ── */
+.card-accent-primary { border-left: 3px solid var(--color-accent-primary); }
+.card-accent-success { border-left: 3px solid var(--color-accent-success); }
+.card-accent-warning { border-left: 3px solid var(--color-accent-warning); }
+.card-accent-danger  { border-left: 3px solid var(--color-accent-danger); }
+
+/* ── Stat cards (Dashboard) ── */
+.stat-card {
+  background: linear-gradient(160deg, var(--color-bg-surface) 0%, var(--color-bg-page) 100%);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--card-padding);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color var(--duration-normal) var(--ease-out-quart),
+    box-shadow var(--duration-normal) var(--ease-out-quart),
+    transform var(--duration-fast) var(--ease-out-expo);
+}
+
+.stat-card:hover {
+  border-color: var(--color-border-hover);
+  box-shadow: var(--shadow-elevated);
+  transform: translateY(-2px);
+}
+
+.stat-card__icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-primary-soft);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  border-radius: var(--radius-md);
+  color: var(--color-accent-primary);
+}
+
+.stat-card__label {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+.stat-card__value {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-none);
+}
+
+.stat-card__sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.stat-card__sub.positive { color: var(--color-accent-success); }
+.stat-card__sub.negative { color: var(--color-accent-danger); }
+
+/* ── Section card (Dashboard sections) ── */
+.section-card {
+  background: linear-gradient(160deg, rgba(22, 23, 18, 0.95) 0%, rgba(18, 19, 16, 0.95) 100%);
+  border: 1px solid rgba(201, 168, 76, 0.11);
+  border-radius: var(--radius-xl);
+  padding: var(--card-padding);
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(201, 168, 76, 0.05);
+}
+
+.section-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-21);
+}
+
+.section-card__title {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+}

@@ -7,8 +7,14 @@ import requests
 from fastapi import HTTPException
 
 from app.core.config import settings
+from app.core.path_security import (
+    sanitize_filename,
+    InvalidFilenameError,
+    PathTraversalError,
+)
 
 logger = logging.getLogger(__name__)
+security_logger = logging.getLogger("security.file")
 
 UPLOAD_FOLDER = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..", "datasets")
@@ -21,10 +27,27 @@ def resolve_user_file(filename: str, user_id: int) -> str:
     Checks local disk first; falls back to downloading from Cloudinary
     when the file is missing locally (e.g. after an ephemeral-disk restart).
     """
-    safe_name = os.path.basename(filename)
+    try:
+        safe_name = sanitize_filename(filename)
+    except (InvalidFilenameError, PathTraversalError) as exc:
+        security_logger.warning(
+            "FILENAME_REJECTED | user_id=%s | filename='%s' | reason=%s",
+            user_id, filename, exc,
+        )
+        raise HTTPException(status_code=400, detail="Invalid filename")
 
     user_dir = os.path.join(UPLOAD_FOLDER, str(user_id))
     user_path = os.path.join(user_dir, safe_name)
+
+    # Verify resolved path stays inside UPLOAD_FOLDER
+    real_path = os.path.realpath(user_path)
+    real_base = os.path.realpath(UPLOAD_FOLDER)
+    if not real_path.startswith(real_base + os.sep):
+        security_logger.error(
+            "PATH_TRAVERSAL_BLOCKED | user_id=%s | resolved='%s'", user_id, real_path,
+        )
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
     if os.path.isfile(user_path):
         return user_path
 
