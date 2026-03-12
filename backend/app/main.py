@@ -22,6 +22,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.payments import router as payments_router
 from app.api.coupons import router as coupons_router
 from app.api.admin import router as admin_router
+from app.api.diagnostics import router as diagnostics_router
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.limiter import limiter
@@ -87,6 +88,7 @@ app.include_router(dashboard_router)
 app.include_router(payments_router)
 app.include_router(coupons_router)
 app.include_router(admin_router)
+app.include_router(diagnostics_router)
 
 
 @app.get("/health")
