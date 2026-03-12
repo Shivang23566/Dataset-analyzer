@@ -469,14 +469,18 @@ export default function MLBuilderView({ filename }: { filename: string }) {
 
     const isClustering = col === NO_TARGET;
 
+    // STEP 1: Detect task type FIRST
+    let detectedTask: string;
     if (isClustering) {
       const clusterTask: TaskDetectResponse = { task: 'clustering' };
       setTaskInfo(clusterTask);
+      detectedTask = 'clustering';
     } else {
       setTaskLoading(true);
       try {
         const task = await detectMLTask(filename, col);
         setTaskInfo(task);
+        detectedTask = task.task;
       } catch (e) {
         console.error('Task detection failed:', e);
         setTaskLoading(false);
@@ -486,15 +490,14 @@ export default function MLBuilderView({ filename }: { filename: string }) {
       }
     }
 
-    // Fetch recommendation + model cards in parallel
-    const task = isClustering ? 'clustering' : null;
+    // STEP 2: Fetch recommendation + model cards with CORRECT task type
     setRecLoading(true);
     setCardsLoading(true);
 
     try {
       const [rec, cardsData] = await Promise.all([
         getMLRecommendation(filename, isClustering ? undefined : col),
-        getModelCards(task ?? 'regression'), // temp; will be updated after task detection
+        getModelCards(detectedTask),
       ]);
       setRecommendation(rec);
       setCards(cardsData.cards);
@@ -506,24 +509,16 @@ export default function MLBuilderView({ filename }: { filename: string }) {
     }
   }, [filename]);
 
-  // Re-fetch model cards once task is actually known (not clustering path)
+  // Validate selected model when cards change (e.g. after target column switch)
   useEffect(() => {
-    if (!taskInfo || taskInfo.task === 'clustering') return;
-    let cancelled = false;
-    const fetchCards = async () => {
-      setCardsLoading(true);
-      try {
-        const data = await getModelCards(taskInfo.task);
-        if (!cancelled) setCards(data.cards);
-      } catch (e) {
-        console.error('Cards fetch failed:', e);
-      } finally {
-        if (!cancelled) setCardsLoading(false);
+    if (selectedCard && cards.length > 0) {
+      const isValid = cards.some(c => c.id === selectedCard.id);
+      if (!isValid) {
+        setSelectedCard(null);
+        setHyperparams({});
       }
-    };
-    fetchCards();
-    return () => { cancelled = true; };
-  }, [taskInfo?.task]); // eslint-disable-line react-hooks/exhaustive-deps
+    }
+  }, [cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Init hyperparams when a card is selected
   const handleSelectCard = (card: ModelCard) => {
@@ -855,7 +850,7 @@ export default function MLBuilderView({ filename }: { filename: string }) {
             ) : (
               <div className="ml-model-grid">
                 {cards.map((card) => {
-                  const isRecommended = recommendation?.recommended_model === card.name;
+                  const isRecommended = recommendation?.recommended_model === card.id;
                   const isSelected    = selectedCard?.id === card.id;
                   return (
                     <div
