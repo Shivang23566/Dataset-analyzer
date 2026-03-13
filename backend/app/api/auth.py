@@ -3,7 +3,7 @@ from typing import Any
 import hashlib
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 
 # Security logger for auth events
 security_logger = logging.getLogger("security.auth")
@@ -31,7 +31,7 @@ from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.schemas import token as token_schemas
 from app.schemas import user as user_schemas
-from app.services.email_service import email_service
+from app.services.email_service import get_email_service
 from app.utils.otp import generate_otp, get_otp_expiry, hash_otp, is_otp_expired, verify_otp
 
 logger = logging.getLogger(__name__)
@@ -127,7 +127,6 @@ async def login_access_token(
 @limiter.limit("5/minute")
 async def initiate_signup(
     request: Request,
-    background_tasks: BackgroundTasks,
     *,
     db: AsyncSession = Depends(get_db),
     body: InitiateSignupRequest,
@@ -136,11 +135,18 @@ async def initiate_signup(
     Step 1 of signup: validate input, store pending verification, send OTP email.
     Does NOT create the user account yet.
     """
+    print(f"\n{'=' * 60}", flush=True)
+    print(f"📝 SIGNUP INITIATE CALLED", flush=True)
+    print(f"   Email: {body.email}", flush=True)
+    print(f"   Name: {body.full_name}", flush=True)
+    print(f"{'=' * 60}\n", flush=True)
+
     normalized_email = body.email.lower().strip()
 
     # Check if email is already registered
     existing = await db.execute(select(User).filter(User.email == normalized_email))
     if existing.scalars().first():
+        print(f"❌ User already exists: {normalized_email}", flush=True)
         raise HTTPException(
             status_code=400,
             detail="An account with this email already exists. Please login instead.",
@@ -174,6 +180,9 @@ async def initiate_signup(
     otp = generate_otp(6)
     otp_hash, salt = hash_otp(otp)
 
+    print(f"🔐 Generated OTP: {otp}", flush=True)
+    print(f"   OTP Hash: {otp_hash[:20]}...", flush=True)
+
     verification = EmailVerification(
         email=normalized_email,
         otp_hash=f"{otp_hash}:{salt}",
@@ -184,15 +193,26 @@ async def initiate_signup(
     db.add(verification)
     await db.commit()
 
-    # Send email in background (non-blocking)
-    background_tasks.add_task(
-        email_service.send_verification_email,
-        normalized_email,
-        otp,
-        body.full_name,
-    )
+    print(f"✅ Verification record created", flush=True)
+
+    # Send OTP email DIRECTLY (not in background - BackgroundTasks fails silently with async)
+    email_service = get_email_service()
+    print(f"📧 Sending OTP email...", flush=True)
+
+    try:
+        email_sent = await email_service.send_otp_email(email=normalized_email, otp=otp)
+        print(f"📧 Email send completed. Result: {email_sent}", flush=True)
+        if not email_sent:
+            print(f"⚠️ Warning: Email may not have been delivered to {normalized_email}", flush=True)
+    except Exception as e:
+        print(f"❌ Email send error: {type(e).__name__}: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        # Continue anyway - OTP is in logs, user can request resend
 
     log_security_event("otp_initiated", normalized_email, request.client.host if request.client else "unknown", True)
+
+    print(f"✅ Signup initiation complete for: {normalized_email}\n", flush=True)
 
     return InitiateSignupResponse(
         message="Verification code sent to your email.",
@@ -314,12 +334,13 @@ async def verify_otp_and_create_account(
 @limiter.limit("3/minute")
 async def resend_otp(
     request: Request,
-    background_tasks: BackgroundTasks,
     *,
     db: AsyncSession = Depends(get_db),
     body: ResendOTPRequest,
 ) -> Any:
     """Resend OTP for a pending signup."""
+    print(f"\n📤 RESEND OTP CALLED for: {body.email}", flush=True)
+
     normalized_email = body.email.lower().strip()
 
     result = await db.execute(
@@ -357,6 +378,8 @@ async def resend_otp(
     otp = generate_otp(6)
     otp_hash, salt = hash_otp(otp)
 
+    print(f"🔐 Generated new OTP: {otp}", flush=True)
+
     verification.otp_hash = f"{otp_hash}:{salt}"
     verification.created_at = datetime.now(timezone.utc)
     verification.expires_at = get_otp_expiry(settings.OTP_EXPIRY_MINUTES)
@@ -364,12 +387,17 @@ async def resend_otp(
 
     await db.commit()
 
-    background_tasks.add_task(
-        email_service.send_verification_email,
-        normalized_email,
-        otp,
-        verification.temp_full_name,
-    )
+    # Send OTP email DIRECTLY (not in background)
+    email_service = get_email_service()
+    print(f"📧 Sending OTP email...", flush=True)
+
+    try:
+        email_sent = await email_service.send_otp_email(email=normalized_email, otp=otp)
+        print(f"📧 Email send completed. Result: {email_sent}", flush=True)
+    except Exception as e:
+        print(f"❌ Email send error: {type(e).__name__}: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
 
     return {
         "message": "New verification code sent.",
@@ -528,3 +556,43 @@ async def logout(
         await db.commit()
 
     return {"message": "Logged out successfully"}
+
+
+# ── Test Email Endpoint (for debugging) ──────────────────────
+
+@router.get("/test-email-send")
+async def test_email_send():
+    """
+    Test endpoint to verify email service works.
+    Sends a test email to verify Resend API is configured correctly.
+    DELETE THIS ENDPOINT AFTER DEBUGGING!
+    """
+    print("\n" + "=" * 60, flush=True)
+    print("🧪 TEST EMAIL ENDPOINT CALLED", flush=True)
+    print("=" * 60 + "\n", flush=True)
+
+    email_service = get_email_service()
+    test_email = "shivangkainth94@gmail.com"
+    test_otp = "999888"
+
+    print(f"📧 Sending test OTP to: {test_email}", flush=True)
+
+    try:
+        result = await email_service.send_otp_email(email=test_email, otp=test_otp)
+
+        return {
+            "success": result,
+            "test_email": test_email,
+            "test_otp": test_otp,
+            "from_email": email_service.from_email,
+            "api_key_set": bool(email_service.api_key),
+            "api_key_preview": email_service.api_key[:10] + "..." if email_service.api_key else None,
+            "message": "Check Render logs for detailed output"
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
