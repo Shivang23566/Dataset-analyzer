@@ -10,27 +10,29 @@ from starlette.responses import Response
 
 _IS_PRODUCTION = os.getenv("RENDER") is not None or os.getenv("ENVIRONMENT", "").lower() == "production"
 
-# CSP: stricter in production, relaxed for dev hot-reload
+# CSP: Allow Razorpay, Google Fonts, Resend, and Cloudinary
 _CSP_PRODUCTION = (
     "default-src 'self'; "
-    "script-src 'self'; "
-    "style-src 'self' 'unsafe-inline'; "
-    "img-src 'self' data: blob: https:; "
-    "font-src 'self' data:; "
-    "connect-src 'self'; "
-    "frame-ancestors 'none'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://api.razorpay.com https://*.razorpay.com; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com data:; "
+    "img-src 'self' data: blob: https: http:; "
+    "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://*.razorpay.com https://api.resend.com https://res.cloudinary.com; "
+    "frame-src 'self' https://api.razorpay.com https://*.razorpay.com; "
+    "frame-ancestors 'self'; "
     "base-uri 'self'; "
     "form-action 'self'"
 )
 
 _CSP_DEVELOPMENT = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-    "style-src 'self' 'unsafe-inline'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://api.razorpay.com https://*.razorpay.com; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com data:; "
     "img-src 'self' data: blob: https: http:; "
-    "font-src 'self' data:; "
-    "connect-src 'self' http://localhost:* ws://localhost:*; "
-    "frame-ancestors 'none'"
+    "connect-src 'self' http://localhost:* ws://localhost:* https://api.razorpay.com https://*.razorpay.com; "
+    "frame-src 'self' https://api.razorpay.com https://*.razorpay.com; "
+    "frame-ancestors 'self'"
 )
 
 
@@ -46,8 +48,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Prevent MIME-type sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
 
-        # Prevent clickjacking
-        response.headers["X-Frame-Options"] = "DENY"
+        # Prevent clickjacking - allow same origin for Razorpay iframe
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
 
         # XSS filter (legacy browsers)
         response.headers["X-XSS-Protection"] = "1; mode=block"

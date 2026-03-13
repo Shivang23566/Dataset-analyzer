@@ -31,7 +31,7 @@ export default function BillingSection() {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   // Razorpay payment
-  const { initiatePayment, isProcessing: upgrading, error: paymentError } = useRazorpay(() => {
+  const { initiatePayment, isProcessing: upgrading, isScriptLoaded, error: paymentError } = useRazorpay(() => {
     showToastGlobal({
       type: 'success',
       title: 'Payment Successful!',
@@ -315,17 +315,17 @@ export default function BillingSection() {
                 <button
                   className="db-btn-primary"
                   onClick={handleUpgrade}
-                  disabled={upgrading}
+                  disabled={upgrading || !isScriptLoaded}
                   style={{
                     background: 'linear-gradient(135deg, #c9a84c, #a07830)',
                     color: '#fff', padding: '12px 28px', borderRadius: 10,
                     fontSize: 13, letterSpacing: '0.06em',
                     fontFamily: "'Inter', sans-serif", fontWeight: 600,
                     boxShadow: '0 4px 24px rgba(201,168,76,0.25)',
-                    opacity: upgrading ? 0.6 : 1,
+                    opacity: (upgrading || !isScriptLoaded) ? 0.6 : 1,
                   }}
                 >
-                  {upgrading ? 'Processing...' : 'Upgrade to Pro — ₹219/month'}
+                  {upgrading ? 'Processing...' : !isScriptLoaded ? 'Loading...' : 'Upgrade to Pro — ₹219/month'}
                 </button>
               </div>
             </div>
