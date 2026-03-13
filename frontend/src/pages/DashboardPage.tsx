@@ -7,7 +7,6 @@ import {
   getDashboardDownloads,
   getPaymentStatus,
   deleteDataset,
-  logout,
 } from '../lib/api';
 import type {
   DashboardSummary,
@@ -20,6 +19,7 @@ import { extractErrorMessage } from '../lib/errorUtils';
 import AccountSection from '../components/AccountSection';
 import BillingSection from '../components/BillingSection';
 import { ToastContainer } from '../components/ToastContainer';
+import ProfileDropdown from '../components/ProfileDropdown';
 import '../styles/pages/dashboard.css';
 
 // ── Type configs (same as mockup) ──────────────
@@ -74,16 +74,6 @@ function getFirstName(fullName: string | null | undefined, email: string | undef
   if (fullName && fullName.trim()) return fullName.split(' ')[0];
   if (email && email.includes('@')) return email.split('@')[0];
   return 'User';
-}
-
-function getInitials(fullName: string | null | undefined, email: string | undefined): string {
-  if (fullName && fullName.trim()) {
-    return fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  }
-  if (email && email.length > 0) {
-    return email[0].toUpperCase();
-  }
-  return 'U';
 }
 
 function parseResultSummary(raw: string | null): Record<string, unknown> {
@@ -230,18 +220,11 @@ export default function DashboardPage() {
     navigate('/workspace', { state: { filename: savedFilename } });
   }
 
-  // Logout
-  function handleLogout() {
-    logout();
-    navigate('/login');
-  }
-
   const plan = payment?.plan || summary?.subscription?.plan || 'free';
   const isPro = plan === 'pro';
   const userName = summary?.user?.full_name || '';
   const userEmail = summary?.user?.email || '';
   const firstName = getFirstName(userName, userEmail);
-  const initials = getInitials(userName, userEmail);
   const memberSince = summary?.user?.member_since
     ? new Date(summary.user.member_since).toLocaleDateString('en-IN', {
         month: 'long', year: 'numeric',
@@ -506,20 +489,16 @@ export default function DashboardPage() {
               ↑ UPGRADE
             </button>
           )}
-          <div
-            onClick={handleLogout}
-            style={{
-              width: 34, height: 34, borderRadius: "50%",
-              background: "linear-gradient(135deg, #1e2018, #2a2b1f)",
-              border: "1px solid rgba(201,168,76,0.18)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 12, color: "#8a8272", cursor: "pointer",
-              fontFamily: "'Inter', sans-serif",
-            }}
-            title="Logout"
-          >
-            {initials}
-          </div>
+          <ProfileDropdown
+            userName={userName}
+            userEmail={userEmail}
+            userPlan={
+              summary?.user?.is_superuser ? 'ADMIN' :
+              isPro ? 'PRO' :
+              'FREE'
+            }
+            onTabChange={(newTab) => setTab(newTab)}
+          />
         </div>
       </nav>
 
